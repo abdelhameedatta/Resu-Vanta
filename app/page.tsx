@@ -4,6 +4,12 @@ import React, { useState, useEffect } from 'react';
 import StripeWrapper from './components/StripeWrapper';
 import PaymentForm from './components/PaymentForm';
 
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
+
 interface Service {
   id: string;
   name: string;
@@ -83,7 +89,6 @@ export default function HomePage(): JSX.Element {
     setIsGenerating(false);
   };
 
-  // تفادي مشكلة IterableIterator عن طريق استخدام Array.from
   const renderServices = (): JSX.Element[] => {
     const serviceElementsMap: Map<string, JSX.Element> = new Map();
     
