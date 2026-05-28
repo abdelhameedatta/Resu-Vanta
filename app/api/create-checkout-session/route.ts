@@ -1,41 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: '2023-10-16',
+});
 
-const SERVICE_CONFIG: Record<string, { name: string; price: number }> = {
-  optimization: { name: 'ResuVanta CV Optimization', price: 799 },
-  builder: { name: 'ResuVanta CV Builder + Optimization', price: 1199 },
-  linkedin: { name: 'ResuVanta LinkedIn Optimization', price: 699 },
+interface PaymentRequestBody {
+  serviceId: string;
+}
+
+const prices: Record<string, number> = {
+  'cv-optimization': 799,
+  'cv-builder': 1199,
+  'linkedin-optimization': 699,
 };
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
-    const body = await req.json();
-    const { service } = body;
+    const body: PaymentRequestBody = await req.json();
+    const amount: number = prices[body.serviceId] || 799;
 
-    if (!service || !SERVICE_CONFIG[service]) {
-      return NextResponse.json({ error: 'Invalid service' }, { status: 400 });
-    }
-
-    const config = SERVICE_CONFIG[service];
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: config.price,
+    const paymentIntent: Stripe.PaymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
       currency: 'usd',
-      metadata: { service },
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: {
+        enabled: true,
+      },
     });
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-      service,
-    });
+    return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error: any) {
-    console.error('Stripe error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create payment intent' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
