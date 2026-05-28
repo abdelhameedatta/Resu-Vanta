@@ -106,16 +106,16 @@ async function startCheckout(service = 'optimization', savedData = {}) {
 }
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
-function getUsageCount(service) {
+function getUsageCount(service: string) {
   const value = sessionStorage.getItem(`resuvanta_usage_${service}`);
   return value ? Number(value) : 0;
 }
-function increaseUsageCount(service) {
+function increaseUsageCount(service: string) {
   const next = getUsageCount(service) + 1;
   sessionStorage.setItem(`resuvanta_usage_${service}`, String(next));
   return next;
 }
-function clearServiceSession(service) {
+function clearServiceSession(service: string) {
   sessionStorage.removeItem(`resuvanta_pending_${service}`);
   sessionStorage.removeItem(`resuvanta_usage_${service}`);
 }
