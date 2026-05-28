@@ -1,10 +1,7 @@
-// app/api/create-checkout-session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const SERVICE_CONFIG: Record<string, { name: string; price: number }> = {
   optimization: { name: 'ResuVanta CV Optimization', price: 799 },
