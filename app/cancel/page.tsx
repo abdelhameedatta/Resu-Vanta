@@ -1,21 +1,14 @@
-'use client';
+import React from 'react';
+import Link from 'next/link';
 
-import { useEffect, useState } from 'react';
-
-export default function CancelPage() {
-  const [service, setService] = useState('optimization');
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const selectedService = params.get('service') || 'optimization';
-    setService(selectedService);
-  }, []);
-
+export default function CancelPage(): JSX.Element {
   return (
-    <main style={{ padding: '40px' }}>
-      <h1>Payment Cancelled</h1>
-      <p>Your payment was not completed. Your entered details are still saved in this browser session.</p>
-      <a href={`/?page=${service}`}>Back to your service</a>
-    </main>
+    <div className="min-h-screen flex flex-col items-center justify-center">
+      <h1 className="text-4xl font-bold text-red-600 mb-4">Payment Cancelled</h1>
+      <p className="mb-6">No charges were made to your account.</p>
+      <Link href="/" className="bg-indigo-600 text-white px-6 py-2 rounded-md">
+        Try Again
+      </Link>
+    </div>
   );
 }
