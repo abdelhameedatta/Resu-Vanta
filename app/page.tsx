@@ -161,7 +161,7 @@ const phrases = [
 ];
 
 // ─── Text helpers ─────────────────────────────────────────────────────────────
-function cleanText(text) {
+function cleanText(text: string) {
   return (text || '')
     .toLowerCase()
     .replace(/[^a-z0-9+#@./,\s-]/g, ' ')
