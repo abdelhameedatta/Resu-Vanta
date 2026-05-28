@@ -2,11 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
-
-const StripeWrapper = dynamic(() => import('./components/StripeWrapper'), {
-  ssr: false,
-});
+import StripeWrapper from './components/StripeWrapper';
 
 const PRICES = {
   optimization: '$7.99',
