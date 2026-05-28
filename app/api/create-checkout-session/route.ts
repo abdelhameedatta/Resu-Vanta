@@ -2,30 +2,25 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2026-05-27.dahlia',
+  apiVersion: '2025-04-30.basil',
 });
 
-interface PaymentRequestBody {
-  serviceId: string;
-}
-
 const prices: Record<string, number> = {
-  'cv-optimization': 799,
-  'cv-builder': 1199,
-  'linkedin-optimization': 699,
+  optimization: 799,
+  builder: 1199,
+  linkedin: 699,
 };
 
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    const body: PaymentRequestBody = await req.json();
-    const amount: number = prices[body.serviceId] || 799;
+    const body = await req.json();
+    const service = body.service || 'optimization';
+    const amount = prices[service] || 799;
 
-    const paymentIntent: Stripe.PaymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
       currency: 'usd',
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      automatic_payment_methods: { enabled: true },
     });
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
