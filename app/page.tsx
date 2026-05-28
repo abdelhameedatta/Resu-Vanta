@@ -1,255 +1,1849 @@
+// @ts-nocheck
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import StripeWrapper from './components/StripeWrapper';
-import PaymentForm from './components/PaymentForm';
 
 declare global {
   interface Window {
     pdfjsLib: any;
+    mammoth: any;
   }
 }
 
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  features: string[];
+const PRICES = {
+  optimization: '$7.99',
+  builder: '$11.99',
+  linkedin: '$6.99',
+};
+
+// ─── AI Call ─────────────────────────────────────────────────────────────────
+async function callAI(payload: Record<string, string>): Promise<string> {
+  const res = await fetch('/api/ai', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.result || '';
 }
 
-const services: Service[] = [
-  { 
-    id: 'cv-optimization', 
-    name: 'CV Optimization', 
-    price: 7.99,
-    description: 'Perfect your existing resume with professional AI keywords and formatting.',
-    features: ['ATS Compatibility Check', 'Keyword Optimization', 'Grammar & Tone Polish']
-  },
-  { 
-    id: 'cv-builder', 
-    name: 'CV Builder + Optimization', 
-    price: 11.99,
-    description: 'Build a brand new high-converting professional CV from scratch with Claude AI.',
-    features: ['Full Resume Generation', 'Custom Executive Summary', '3 Downloadable Formats', 'Priority Processing']
-  },
-  { 
-    id: 'linkedin-optimization', 
-    name: 'LinkedIn Optimization', 
-    price: 6.99,
-    description: 'Transform your LinkedIn profile into a recruiter magnet.',
-    features: ['Headline & About Rewrite', 'Experience Bullet Points', 'Skills Alignment Strategy']
-  },
-];
+function parseAICV(text: string) {
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(
+      label + '[:s]*([sS]*?)(?=' + next.join('|') + '|$)',
+      'i'
+    );
+    const match = text.match(pattern);
+    return match ? match[1].trim() : '';
+  }
+  const sections = [
+    'SUMMARY',
+    'PROFESSIONAL EXPERIENCE',
+    'EDUCATION',
+    'TECHNICAL SKILLS',
+    'SOFT SKILLS',
+    'INTERNSHIP AND COURSES',
+    'LANGUAGES',
+    'LICENSES',
+    'ADDITIONAL INFORMATION',
+  ];
+  return {
+    summary: extract('SUMMARY', sections.slice(1)),
+    experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(2)),
+    education: extract('EDUCATION', sections.slice(3)),
+    technicalSkills: extract('TECHNICAL SKILLS', sections.slice(4)),
+    softSkills: extract('SOFT SKILLS', sections.slice(5)),
+    internshipCourses: extract('INTERNSHIP AND COURSES', sections.slice(6)),
+    language: extract('LANGUAGES', sections.slice(7)),
+    license: extract('LICENSES', sections.slice(8)),
+    additionalInfo: extract('ADDITIONAL INFORMATION', []),
+  };
+}
 
-export default function HomePage(): JSX.Element {
-  const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [clientSecret, setClientSecret] = useState<string>('');
-  const [unlockedService, setUnlockedService] = useState<string | null>(null);
-  const [usageCount, setUsageCount] = useState<number>(0);
-  const [promptInput, setPromptInput] = useState<string>('');
-  const [aiResult, setAiResult] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+function parseLinkedInOutput(text: string) {
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(
+      label + '[:s]*([sS]*?)(?=' + next.join('|') + '|$)',
+      'i'
+    );
+    const match = text.match(pattern);
+    return match ? match[1].trim() : '';
+  }
+  return {
+    headline: extract('HEADLINE', ['ABOUT', 'SKILLS', 'RECRUITER']),
+    about: extract('ABOUT', ['SKILLS', 'RECRUITER']),
+    skills: extract('SKILLS', ['RECRUITER']),
+    recruiterKeywords: extract('RECRUITER KEYWORDS', []),
+  };
+}
 
-  useEffect((): void => {
-    const activeService: string | null = sessionStorage.getItem('unlockedService');
-    const count: string | null = sessionStorage.getItem('usageCount');
-    
-    if (activeService) setUnlockedService(activeService);
-    if (count) setUsageCount(parseInt(count, 10));
-  }, []);
-
-  const handleSelectService = async (serviceId: string): Promise<void> => {
-    setSelectedService(serviceId);
-    setClientSecret('');
-    
-    const response: Response = await fetch('/api/create-checkout-session', {
+// ─── Checkout ────────────────────────────────────────────────────────────────
+async function startCheckout(service = 'optimization', savedData = {}) {
+  sessionStorage.setItem(
+    `resuvanta_pending_${service}`,
+    JSON.stringify(savedData)
+  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ serviceId }),
+      body: JSON.stringify({ service }),
+      signal: controller.signal,
     });
-    
-    const data: { clientSecret: string } = await response.json();
-    setClientSecret(data.clientSecret);
-  };
-
-  const handlePaymentSuccess = (serviceName: string): void => {
-    setUnlockedService(serviceName);
-    setUsageCount(0);
-    setSelectedService(null);
-  };
-
-  const handleGenerate = async (): Promise<void> => {
-    if (usageCount >= 3) {
-      alert('You have reached the maximum of 3 generations for this session.');
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    if (data.url) {
+      window.location.href = data.url;
       return;
     }
+    throw new Error(data.error || 'Payment failed');
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
 
-    setIsGenerating(true);
-    try {
-      const response: Response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptInput, service: unlockedService }),
-      });
-      
-      const data: { result?: string; error?: string } = await response.json();
-      
-      if (data.result) {
-        setAiResult(data.result);
-        const newCount: number = usageCount + 1;
-        setUsageCount(newCount);
-        sessionStorage.setItem('usageCount', newCount.toString());
-      } else {
-        alert(data.error || 'Failed to generate');
-      }
-    } catch (error: any) {
-      alert('Error during generation');
-    }
-    setIsGenerating(false);
+// ─── Session helpers ──────────────────────────────────────────────────────────
+function getUsageCount(service) {
+  const value = sessionStorage.getItem(`resuvanta_usage_${service}`);
+  return value ? Number(value) : 0;
+}
+function increaseUsageCount(service) {
+  const next = getUsageCount(service) + 1;
+  sessionStorage.setItem(`resuvanta_usage_${service}`, String(next));
+  return next;
+}
+function clearServiceSession(service) {
+  sessionStorage.removeItem(`resuvanta_pending_${service}`);
+  sessionStorage.removeItem(`resuvanta_usage_${service}`);
+}
+
+// ─── Stop words & phrases ─────────────────────────────────────────────────────
+const stopWords = new Set(
+  'the and for with you your our are this that from have has will can all any but not who what when where why how into about over under than then they them their there here been being were was is am to of in on at by as or an a be we it its if must should may more most such using use used work working role job position candidate company team teams responsible required preferred ability requirements responsibilities qualification qualifications'.split(
+    ' '
+  )
+);
+const phrases = [
+  'project management',
+  'customer service',
+  'data analysis',
+  'communication skills',
+  'sales experience',
+  'social media',
+  'microsoft excel',
+  'problem solving',
+  'team leadership',
+  'time management',
+  'business development',
+  'software development',
+  'inventory management',
+  'digital marketing',
+  'account management',
+  'leadership skills',
+  'analytical skills',
+  'reporting',
+  'crm',
+  'salesforce',
+  'operations management',
+  'quality assurance',
+  'regulatory affairs',
+  'patient care',
+  'pharmaceutical care',
+  'insurance approvals',
+  'dispensing',
+  'inventory control',
+  'patient counseling',
+  'medical terminology',
+  'clinical pharmacy',
+];
+
+// ─── Text helpers ─────────────────────────────────────────────────────────────
+function cleanText(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+#@./,\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function cleanKeyword(word) {
+  return word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '').trim();
+}
+function escapeHTML(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+function extractKeywords(text, limit = 25) {
+  const cleaned = cleanText(text);
+  const counts = new Map();
+  phrases.forEach((p) => {
+    if (cleaned.includes(p)) counts.set(p, 4);
+  });
+  cleaned.split(' ').forEach((word) => {
+    const w = cleanKeyword(word);
+    if (!w || w.length < 3 || stopWords.has(w)) return;
+    counts.set(w, (counts.get(w) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([w]) => w);
+}
+
+// ─── Analysis ─────────────────────────────────────────────────────────────────
+function analyzeResume(resume, jobDescription) {
+  const resumeText = cleanText(resume);
+  const jobText = cleanText(jobDescription);
+  const keywords = extractKeywords(jobText, 25);
+  const found = keywords.filter((k) => resumeText.includes(k));
+  const missing = keywords.filter((k) => !resumeText.includes(k));
+  const keywordScore = keywords.length ? found.length / keywords.length : 0;
+  const hasNumbers =
+    /\d|%|increased|reduced|improved|managed|achieved|generated|saved|delivered/.test(
+      resumeText
+    );
+  const hasSkills = /(skills|tools|technologies|competencies)/.test(resumeText);
+  const hasExperience =
+    /(experience|worked|managed|responsible|led|handled)/.test(resumeText);
+  const hasEducation =
+    /(education|degree|bachelor|master|university|college|certification|license)/.test(
+      resumeText
+    );
+  const score = Math.min(
+    100,
+    Math.round(
+      keywordScore * 60 +
+        (hasNumbers ? 15 : 0) +
+        (hasSkills ? 10 : 0) +
+        (hasExperience ? 10 : 0) +
+        (hasEducation ? 5 : 0)
+    )
+  );
+  const sentenceCount = (resumeText.match(/[.!?]/g) || []).length;
+  const hasActionVerbs =
+    /(managed|led|developed|achieved|improved|reduced|increased|delivered|designed|coordinated|supervised|trained|implemented)/i.test(
+      resumeText
+    );
+  const hasMetrics =
+    /(\d+\s*%|\d+\s*years|\d+\s*team|\d+\s*million|\d+\s*patients|\d+\s*clients)/i.test(
+      resumeText
+    );
+  const professionalScore = Math.min(
+    90,
+    Math.round(
+      (hasActionVerbs ? 28 : 0) +
+        (hasMetrics ? 22 : 0) +
+        (hasSkills ? 15 : 0) +
+        Math.min(sentenceCount * 2, 15) +
+        (hasExperience ? 10 : 0)
+    )
+  );
+  const keywordMatchPct = Math.round(keywordScore * 100);
+  const level =
+    score < 50 ?
+    'Low Match' : score < 75 ? 'Medium Match' : 'High Match';
+  let quickImprovement =
+    'Add more job-specific keywords naturally into your Summary, Skills, and Experience sections.';
+  if (!hasNumbers)
+    quickImprovement =
+      'Add measurable achievements using numbers, percentages, or clear results.';
+  else if (!hasSkills)
+    quickImprovement =
+      'Add a clear Skills section with the most relevant keywords from the job description.';
+  else if (!hasExperience)
+    quickImprovement =
+      'Rewrite your experience section with stronger action verbs and role-specific responsibilities.';
+  const fullSuggestions = [
+    'Add missing job-specific keywords naturally into the resume.',
+    'Rewrite the professional summary to match the target job.',
+    'Add measurable achievements where possible.',
+    'Use clear ATS-friendly headings.',
+    'Keep the resume simple and avoid heavy graphics or tables.',
+  ];
+  const risks = [];
+  if (
+    /license|certified|certification/.test(jobText) &&
+    !/license|certified|certification/.test(resumeText)
+  )
+    risks.push(
+      'The job may require a license or certification that is not visible in the resume.'
+    );
+  if (
+    /degree|bachelor|master/.test(jobText) &&
+    !/degree|bachelor|master/.test(resumeText)
+  )
+    risks.push(
+      'The job may require education details that are not clearly visible.'
+    );
+  if (
+    /years|experience/.test(jobText) &&
+    !/years|experience|20\d\d/.test(resumeText)
+  )
+    risks.push('Required years of experience may not be clearly stated.');
+  if (!risks.length)
+    risks.push('No major knockout risk detected from the visible text.');
+  return {
+    score,
+    professionalScore,
+    keywordMatchPct,
+    level,
+    found,
+    missing,
+    previewMissing: missing.slice(0, 3),
+    missingCount: missing.length,
+    quickImprovement,
+    fullSuggestions,
+    risks,
   };
+}
 
-  const renderServices = (): JSX.Element[] => {
-    const serviceElementsMap: Map<string, JSX.Element> = new Map();
-    
-    services.forEach((service: Service) => {
-      const isCurrentSelected: boolean = selectedService === service.id;
-      serviceElementsMap.set(service.id, (
-        <div 
-          key={service.id} 
-          className={`flex flex-col h-full bg-white border rounded-2xl p-6 transition-all duration-200 shadow-sm ${
-            isCurrentSelected ? 'ring-2 ring-indigo-600 border-transparent shadow-md' : 'hover:shadow-md border-gray-100'
-          }`}
-        >
-          <div className="flex-1">
-            <h3 className="font-bold text-xl text-gray-900 mb-2">{service.name}</h3>
-            <p className="text-gray-500 text-sm mb-4 min-h-[40px]">{service.description}</p>
-            <div className="flex items-baseline mb-6">
-              <span className="text-4xl font-extrabold text-gray-900">${service.price}</span>
-              <span className="text-gray-500 text-sm ml-1">/ session</span>
-            </div>
-            <ul className="space-y-2.5 mb-6 text-sm text-gray-600">
-              {service.features.map((feature: string, index: number) => (
-                <li key={index} className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <button
-            onClick={() => handleSelectService(service.id)}
-            className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all ${
-              isCurrentSelected 
-                ? 'bg-indigo-50 text-indigo-700 font-semibold' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-            }`}
-          >
-            {isCurrentSelected ? 'Selected' : 'Get Started'}
-          </button>
-        </div>
-      ));
-    });
+// ─── Professional sentences generator ────────────────────────────────────────
+function generateProfessionalSentences(jobDescription, foundKeywords) {
+  const job = cleanText(jobDescription);
+  const sentences = [];
+  if (foundKeywords.length > 0)
+    sentences.push(
+      `Demonstrated expertise in ${foundKeywords
+        .slice(0, 3)
+        .join(', ')} with a proven track record of delivering results.`
+    );
+  if (/manag|lead|supervis/.test(job))
+    sentences.push(
+      'Successfully managed cross-functional teams and coordinated multiple projects simultaneously to meet deadlines.'
+    );
+  if (/patient|clinical|pharmacy|medical/.test(job))
+    sentences.push(
+      'Provided comprehensive patient care and counseling, ensuring medication safety and regulatory compliance.'
+    );
+  if (/data|analytic|report/.test(job))
+    sentences.push(
+      'Leveraged data analysis and reporting tools to drive informed decision-making and improve operational efficiency.'
+    );
+  if (/customer|client|service/.test(job))
+    sentences.push(
+      'Built strong client relationships through excellent communication and a commitment to customer satisfaction.'
+    );
+  if (/develop|software|tech/.test(job))
+    sentences.push(
+      'Delivered scalable software solutions using industry best practices and agile methodologies.'
+    );
+  if (sentences.length < 3)
+    sentences.push(
+      'Consistently exceeded performance targets while maintaining high standards of quality and professionalism.'
+    );
+  return sentences.slice(0, 4);
+}
 
-    return Array.from(serviceElementsMap.values());
-  };
-
+// ─── CV builders ─────────────────────────────────────────────────────────────
+function guessName(resume) {
+  const lines = resume
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const first = lines[0] || '';
+  if (
+    first.length <= 45 &&
+    !first.includes('@') &&
+    !/\d{3,}/.test(first) &&
+    !/resume|cv|curriculum/i.test(first)
+  )
+    return first;
+  return 'NAME';
+}
+function guessEducation(resume) {
   return (
-    <main className="min-h-screen bg-slate-50 text-gray-800 antialiased selection:bg-indigo-500 selection:text-white">
-      <div className="max-w-6xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
-        
-        <header className="text-center mb-16">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-            ResuVanta
-          </h1>
-          <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
-            Optimize your professional presence and pass ATS filters instantly using Claude AI.
-          </p>
-        </header>
-
-        {!unlockedService ? (
-          <div className="space-y-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-              {renderServices()}
-            </div>
-
-            {selectedService && clientSecret && (
-              <div className="max-w-md mx-auto bg-white border border-gray-100 rounded-2xl p-6 shadow-xl animate-fade-in">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Secure Checkout
-                </h2>
-                <StripeWrapper clientSecret={clientSecret}>
-                  <PaymentForm serviceName={selectedService} onSuccess={handlePaymentSuccess} />
-                </StripeWrapper>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto bg-white border border-gray-100 rounded-2xl p-8 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-6 mb-6 gap-4">
-              <div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200 mb-2">
-                  Active Workspace
-                </span>
-                <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                  {unlockedService.replace('-', ' ')}
-                </h2>
-              </div>
-              <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center sm:text-right">
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Generations Remaining</p>
-                <p className="text-lg font-bold text-gray-900">{3 - usageCount} <span className="text-gray-400 text-sm font-normal">out of 3</span></p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="block text-sm font-semibold text-gray-700">
-                Your Professional Background / Current CV Data
-              </label>
-              <textarea
-                value={promptInput}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPromptInput(e.target.value)}
-                placeholder="Paste your resume content, experience details, or specifics you want optimized..."
-                className="w-full h-48 p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm resize-none placeholder-gray-400 shadow-inner bg-slate-50/50"
-              />
-
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || usageCount >= 3}
-                className="w-full sm:w-auto flex items-center justify-center bg-indigo-600 text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm shadow-indigo-200"
-              >
-                {isGenerating ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Claude is optimizing...
-                  </span>
-                ) : 'Generate AI Review'}
-              </button>
-            </div>
-
-            {aiResult && (
-              <div className="mt-8 border border-gray-100 bg-slate-50/50 rounded-2xl p-6 animate-fade-in">
-                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  Optimized Output
-                </h3>
-                <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-mono">
-                  {aiResult}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </main>
+    sectionFromResume(resume, ['education', 'academic', 'qualifications']) ||
+    'Please add your education details here.'
   );
 }
+function guessLanguage(resume) {
+  const sec = sectionFromResume(resume, ['language', 'languages']);
+  return sec || 'Not provided';
+}
+function guessLicense(resume) {
+  const sec = sectionFromResume(resume, ['license', 'licence', 'licenses']);
+  return sec || 'Not provided';
+}
+function guessEmail(resume) {
+  const m = resume.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return m ? m[0] : 'Not provided';
+}
+function guessPhone(resume) {
+  const m = resume.match(/(\+?\d[\d\s().-]{7,}\d)/);
+  return m ? m[0] : 'Not provided';
+}
+function guessLinkedIn(resume) {
+  const m = resume.match(/(https?:\/\/)?(www\.)?linkedin\.com\/[^\s]+/i);
+  return m ? m[0] : 'Not provided';
+}
+function sectionFromResume(resume, sectionNames) {
+  const lines = resume.split('\n');
+  const lowerNames = sectionNames.map((s) => s.toLowerCase());
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim().toLowerCase();
+    if (lowerNames.some((n) => line === n || line.includes(n))) {
+      start = i + 1;
+      break;
+    }
+  }
+  if (start === -1) return '';
+  const stopSections = [
+    'summary',
+    'profile',
+    'experience',
+    'professional experience',
+    'employment',
+    'education',
+    'skills',
+    'certification',
+    'certifications',
+    'courses',
+    'training',
+    'internship',
+    'language',
+    'languages',
+    'license',
+    'licence',
+    'additional',
+    'projects',
+  ];
+  const collected = [];
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const low = line.toLowerCase();
+    if (
+      collected.length > 0 &&
+      stopSections.some((w) => low === w || low.startsWith(w + ' '))
+    )
+      break;
+    if (line) collected.push(line);
+  }
+  return collected.join('\n').trim();
+}
+
+function createOptimizedCV(resume, jobDescription) {
+  const analysis = analyzeResume(resume, jobDescription);
+  const profSentences = generateProfessionalSentences(
+    jobDescription,
+    analysis.found
+  );
+  const name = guessName(resume);
+  const email = guessEmail(resume);
+  const phone = guessPhone(resume);
+  const linkedin = guessLinkedIn(resume);
+  // Try to extract sections — if empty, leave blank for user to fill
+  let summaryFromResume = sectionFromResume(resume, [
+    'summary',
+    'profile',
+    'professional summary',
+    'objective',
+  ]);
+  let experienceFromResume = sectionFromResume(resume, [
+    'experience',
+    'professional experience',
+    'employment',
+    'work experience',
+    'work history',
+  ]);
+  let educationFromResume = sectionFromResume(resume, [
+    'education',
+    'academic',
+    'qualifications',
+  ]);
+  let skillsFromResume = sectionFromResume(resume, [
+    'skills',
+    'core skills',
+    'technical skills',
+    'key skills',
+  ]);
+  let coursesFromResume = sectionFromResume(resume, [
+    'courses',
+    'training',
+    'internship',
+    'internships',
+    'certifications',
+    'certification',
+  ]);
+  let languageFromResume = sectionFromResume(resume, ['language', 'languages']);
+  let licenseFromResume = sectionFromResume(resume, [
+    'license',
+    'licence',
+    'licenses',
+  ]);
+  // If the courses/training section was accidentally put into experience, detect it
+  // (happens with unstructured PDFs where all text merges)
+  const hasSectionHeadings =
+    /\n(EXPERIENCE|EDUCATION|SKILLS|SUMMARY|EMPLOYMENT)/i.test(resume);
+  if (!hasSectionHeadings && !experienceFromResume) {
+    // PDF was unstructured — put a helpful placeholder
+    experienceFromResume =
+      '• Please paste your work experience here manually.\n• Include job title, company, dates, and key responsibilities.';
+  }
+  if (!educationFromResume) {
+    educationFromResume =
+      'Please add your education details here (degree, university, year, country).';
+  }
+
+  const keywordSkills = [
+    ...new Set([...analysis.found, ...analysis.missing]),
+  ].slice(0, 14);
+  const enhancedSummary =
+    (summaryFromResume ||
+      'Results-focused candidate with experience aligned to the target role.') +
+    '\n\n' +
+    profSentences.join(' ');
+  return {
+    cv: {
+      name: name ||
+      'NAME',
+      address: 'Not provided',
+      phone,
+      email,
+      linkedin,
+      summary: enhancedSummary,
+      experience:
+        experienceFromResume ||
+      '• Add your work experience here.\n• Include job title, company, dates, and key responsibilities.',
+      education: educationFromResume,
+      softSkills:
+        'Communication, teamwork, problem solving, time management, adaptability, attention to detail',
+      technicalSkills:
+        skillsFromResume ||
+      (keywordSkills.length ? keywordSkills.join(', ') : 'Not provided'),
+      internshipCourses: coursesFromResume ||
+      'Not provided',
+      additionalInfo:
+        '• You can edit this section freely.\n• Add any awards, volunteer work, or other relevant information.',
+      language: languageFromResume ||
+      'Not provided',
+      license: licenseFromResume ||
+      'Not provided',
+    },
+    analysis,
+    profSentences,
+  };
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+function openPDFWindow(cv, title = 'Optimized CV') {
+  const html = `<html><head><title>${escapeHTML(title)}</title>
+    <style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.45;padding:36px}
+    h1{text-align:center;font-size:26px;margin:0 0 8px;letter-spacing:1px}
+    .contact{text-align:center;font-size:12px;margin-bottom:20px}
+    h2{font-size:14px;border-bottom:1px solid #111827;padding-bottom:4px;margin:18px 0 8px;letter-spacing:.5px}
+    p{margin:5px 0;font-size:13px;white-space:pre-wrap}
+    @media print{body{padding:24px}}</style></head>
+    <body>
+    <h1>${escapeHTML(cv.name)}</h1>
+    <div class="contact">ADDRESS: ${escapeHTML(
+      cv.address
+    )} |
+    PHONE: ${escapeHTML(cv.phone)} | E-MAIL: ${escapeHTML(
+    cv.email
+  )} |
+    LinkedIn: ${escapeHTML(cv.linkedin)}</div>
+    <h2>SUMMARY</h2><p>${escapeHTML(cv.summary)}</p>
+    <h2>PROFESSIONAL EXPERIENCE</h2><p>${escapeHTML(cv.experience)}</p>
+    <h2>EDUCATION</h2><p>${escapeHTML(cv.education)}</p>
+    <h2>SKILLS</h2><p><b>Soft Skills:</b> ${escapeHTML(
+      cv.softSkills
+    )}</p><p><b>Technical Skills:</b> ${escapeHTML(cv.technicalSkills)}</p>
+    <h2>INTERNSHIP AND COURSES</h2><p>${escapeHTML(cv.internshipCourses)}</p>
+    <h2>ADDITIONAL INFORMATION</h2><p>${escapeHTML(cv.additionalInfo)}</p>
+    <h2>LANGUAGE:</h2><p>${escapeHTML(cv.language)}</p>
+    <h2>ANY LICENSE</h2><p>${escapeHTML(cv.license)}</p>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+// ─── Animated Bar ─────────────────────────────────────────────────────────────
+function AnimatedBar({ label, value, color, delay = 0 }) {
+  const [displayed, setDisplayed] = useState(0);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let current = 0;
+      const target = value;
+      const step = target / 60;
+      const interval = setInterval(() => {
+        current = Math.min(current + step, target);
+        setWidth(Math.round(current));
+        setDisplayed(Math.round(current));
+        if (current >= target) clearInterval(interval);
+      }, 16);
+      return () => clearInterval(interval);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginBottom: 6,
+        }}
+      >
+        <span style={{ fontSize: 14, color: '#94a3b8' }}>{label}</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' 
+        }}>
+          {displayed}%
+        </span>
+      </div>
+      <div
+        style={{
+          height: 12,
+          background: '#1e293b',
+          borderRadius: 6,
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            borderRadius: 6,
+            background: color,
+            width: `${width}%`,
+            transition: 'width 0.05s linear',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Steps Strip ─────────────────────────────────────────────────────────────
+function StepsStrip({ steps }) {
+  return (
+    <div
+      style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}
+    >
+      {steps.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: '#101827',
+            border: '1px solid #24344f',
+            borderRadius: 999,
+            padding: '6px 14px',
+            fontSize: 13,
+            color: '#94a3b8',
+          }}
+        >
+          <span
+            style={{
+              background: '#2563eb',
+              color: '#dbeafe',
+              borderRadius: '50%',
+              width: 20,
+              height: 20,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {i + 1}
+          </span>
+          {s}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── CV Template Preview ──────────────────────────────────────────────────────
+function CVTemplatePreview({ cv }) {
+  return (
+    <div className="cv-template-preview">
+      <h1>{cv.name}</h1>
+      <div className="contact-line">
+        ADDRESS: {cv.address} | PHONE: {cv.phone} | E-MAIL: {cv.email} |
+        LinkedIn: {cv.linkedin}
+      </div>
+      <CVSection title="SUMMARY" content={cv.summary} />
+      <CVSection title="PROFESSIONAL EXPERIENCE" content={cv.experience} />
+      <CVSection title="EDUCATION" content={cv.education} />
+      <div className="cv-section">
+        <h2>SKILLS</h2>
+        <p>
+          <b>Soft Skills:</b> {cv.softSkills}
+        </p>
+        <p>
+          <b>Technical Skills:</b> {cv.technicalSkills}
+        </p>
+      </div>
+      <CVSection
+        title="INTERNSHIP AND COURSES"
+        content={cv.internshipCourses}
+      />
+      <CVSection title="ADDITIONAL INFORMATION" content={cv.additionalInfo} />
+      <CVSection title="LANGUAGE:" content={cv.language} />
+      <CVSection title="ANY LICENSE" content={cv.license} />
+    </div>
+  );
+}
+function CVSection({ title, content }) {
+  return (
+    <div className="cv-section">
+      <h2>{title}</h2>
+      {(content || 'Not provided').split('\n').map((line, i) => (
+        <p key={i}>{line}</p>
+      ))}
+    </div>
+  );
+}
+
+// ─── Brand Logo ───────────────────────────────────────────────────────────────
+function BrandLogo({ darkMode, footer = false }) {
+  const logoSrc = footer
+    ?
+    '/logo-dark.svg'
+    : darkMode
+    ? '/logo-dark.svg'
+    : '/logo-light.svg';
+  return (
+    <div className={footer ? 'logoBlock footerLogoBlock' : 'logoBlock'}>
+      <div className="logoImageFrame">
+        <img src={logoSrc} alt="Resuvanta logo" className="logoImage" />
+      </div>
+      <div className="logoSlogan">Apply with confidence.</div>
+    </div>
+  );
+}
+
+// ─── Home ─────────────────────────────────────────────────────────────────────
+function Home({ setPage }) {
+  return (
+    <>
+      <section className="home-hero">
+        <div className="home-content">
+          <p className="label">ATS-friendly CV tools</p>
+          <h1>Build, optimize, and improve your CV for the job you want.</h1>
+          <p>
+            Resuvanta helps job seekers check their CV, discover missing
+            keywords, build a professional CV from scratch, and improve their
+            LinkedIn profile for recruiters.
+          </p>
+          <div className="hero-actions">
+            <button onClick={() => setPage('optimization')}>
+              Optimize My CV
+            </button>
+            <button className="secondary" onClick={() => setPage('builder')}>
+              Build New CV
+            </button>
+          </div>
+        </div>
+        <div className="home-card">
+          <h3>What you can do</h3>
+          <ul>
+            <li>Check 
+            how well your CV matches a job description</li>
+            <li>See missing ATS keywords before applying</li>
+            <li>Build a professional CV step by step</li>
+            <li>Improve your LinkedIn profile for recruiters</li>
+            <li>Download your final CV as PDF</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <h2>Our Services</h2>
+        <div className="service-grid">
+          <div className="service-card">
+            <h3>CV Optimization</h3>
+            <h2>{PRICES.optimization}</h2>
+            <p>
+              Upload your current CV and paste the job description.
+              Get a free
+              preview first, then unlock full optimization.
+            </p>
+            <button onClick={() => setPage('optimization')}>
+              Start CV Optimization
+            </button>
+          </div>
+          <div className="service-card featured">
+            <h3>CV Builder + Optimization</h3>
+            <h2>{PRICES.builder}</h2>
+            <p>
+              No CV yet?
+              Answer guided questions and generate an optimized,
+              ATS-friendly CV for your target job.
+            </p>
+            <button onClick={() => setPage('builder')}>
+              Build & Optimize CV
+            </button>
+          </div>
+          <div className="service-card">
+            <h3>LinkedIn Optimization</h3>
+            <h2>{PRICES.linkedin}</h2>
+            <p>
+              Improve your LinkedIn headline, About section, skills, and
+              recruiter search keywords.
+            </p>
+            <button onClick={() => setPage('linkedin')}>
+              Optimize LinkedIn
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section how-it-works">
+        <h2>How it works</h2>
+        <div className="steps-grid">
+          <div>
+            <span>1</span>
+            <h3>Upload or Enter Details</h3>
+            <p>Upload your CV or answer simple builder questions.</p>
+          </div>
+          <div>
+            <span>2</span>
+            <h3>Get a Free Preview</h3>
+            <p>
+              See your match score, missing keyword count, and one improvement
+              tip.
+            </p>
+          </div>
+          <div>
+            <span>3</span>
+            <h3>Unlock Full Result</h3>
+            <p>
+              Pay only when you want the full optimized CV or builder output.
+            </p>
+          </div>
+          <div>
+            <span>4</span>
+            <h3>Download PDF</h3>
+            <p>Your final output is delivered as a clean PDF-ready CV.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <h2>Why use Resuvanta?</h2>
+        <div className="features-grid">
+          <div>ATS-friendly structure</div>
+          <div>Job description keyword matching</div>
+          <div>Step-by-step CV builder</div>
+          <div>Professional template output</div>
+          <div>Accurate sentences</div>
+          <div>LinkedIn optimization</div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ─── Optimization Page ────────────────────────────────────────────────────────
+function OptimizationPage() {
+  const [resume, setResume] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [result, setResult] = useState(null);
+  const [paidCV, setPaidCV] = useState(null);
+  const [profSentences, setProfSentences] = useState([]);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [remainingOutputs, setRemainingOutputs] = useState(3);
+  useEffect(() => {
+    setIsPaying(false);
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const saved = sessionStorage.getItem('resuvanta_pending_optimization');
+    if (payment === 'success' && saved) {
+      try {
+        const data = JSON.parse(saved);
+        const savedResume = data.resume || '';
+        const savedJobDescription = data.jobDescription || '';
+        const used = getUsageCount('optimization');
+        const remaining = Math.max(0, 3 - used);
+        setResume(savedResume);
+        setJobDescription(savedJobDescription);
+        setPaymentConfirmed(true);
+        setRemainingOutputs(remaining);
+        setError('');
+        if (savedResume.trim() && savedJobDescription.trim())
+          setResult(analyzeResume(savedResume, savedJobDescription));
+        setMessage(
+          `Payment confirmed. You can generate up to ${remaining} optimized CV output(s) while this 
+          page is open.`
+        );
+      } catch (e) {
+        setError(
+          'Payment confirmed, but we could not restore your saved CV details.'
+        );
+      }
+    }
+  }, []);
+
+  async function readFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const fileName = file.name.toLowerCase();
+    setMessage('Reading file...');
+    setError('');
+    try {
+      if (fileName.endsWith('.txt')) {
+        setResume(await file.text());
+        setMessage('TXT file loaded successfully.');
+        return;
+      }
+      if (fileName.endsWith('.pdf')) {
+        await loadScript(
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+        );
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await window.pdfjsLib.getDocument({
+          data: await file.arrayBuffer(),
+        }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const c = await page.getTextContent();
+          fullText += c.items.map((i) => i.str).join(' ') + '\n\n';
+        }
+        if (!fullText.trim()) {
+          setError(
+            'Could not extract text from this PDF. It may be scanned as an image.'
+          );
+          return;
+        }
+        setResume(fullText);
+        setMessage('PDF loaded successfully.');
+        return;
+      }
+      if (fileName.endsWith('.docx')) {
+        await loadScript('https://unpkg.com/mammoth/mammoth.browser.min.js');
+        const output = await window.mammoth.extractRawText({
+          arrayBuffer: await file.arrayBuffer(),
+        });
+        if (!output.value.trim()) {
+          setError('Could not extract text from this DOCX.');
+          return;
+        }
+        setResume(output.value);
+        setMessage('DOCX loaded successfully.');
+        return;
+      }
+      setError('Unsupported file type. Upload PDF, DOCX, or TXT.');
+    } catch {
+      setError(
+        'Could not read this file. Please paste the resume text manually.'
+      );
+    }
+  }
+
+  function runFreePreview() {
+    if (!resume.trim()) {
+      setError('Please upload or paste a CV first.');
+      return;
+    }
+    if (!jobDescription.trim()) {
+      setError('Please paste the job description first.');
+      return;
+    }
+    if (
+      resume.split(' ').length < 30 ||
+      jobDescription.split(' ').length < 30
+    ) {
+      setError('Please add more complete CV and job description text.');
+      return;
+    }
+    setPaidCV(null);
+    setError('');
+    setMessage('');
+    setResult(analyzeResume(resume, jobDescription));
+  }
+
+  async function handleOptimizationPayment() {
+    if (!resume.trim() || !jobDescription.trim()) {
+      setError('Please upload CV and paste job description first.');
+      return;
+    }
+    setIsPaying(true);
+    setError('');
+    try {
+      await startCheckout('optimization', { resume, jobDescription });
+    } catch {
+      setIsPaying(false);
+      setError('Payment connection took too long. Please try again.');
+    }
+  }
+
+  async function generatePaidOptimizationCV() {
+    if (!resume.trim() || !jobDescription.trim()) {
+      setError('Please upload CV and paste job description first.');
+      return;
+    }
+    const used = getUsageCount('optimization');
+    if (used >= 3) {
+      setError('You have used all 3 CV outputs for this payment session.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const aiText = await callAI({
+        service: 'optimization',
+        resume,
+        jobDescription,
+      });
+      const parsed = parseAICV(aiText);
+      const name = guessName(resume);
+      const email = guessEmail(resume);
+      const phone = guessPhone(resume);
+      const linkedin = guessLinkedIn(resume);
+      const analysis = analyzeResume(resume, jobDescription);
+      const cv = {
+        name: name ||
+        'NAME',
+        address: 'Not provided',
+        phone,
+        email,
+        linkedin,
+        summary: parsed.summary ||
+        aiText.slice(0, 300),
+        experience: parsed.experience ||
+        'Please add your experience here.',
+        education: parsed.education ||
+        guessEducation(resume),
+        softSkills:
+          parsed.softSkills ||
+        'Communication, teamwork, problem solving, time management',
+        technicalSkills: parsed.technicalSkills ||
+        analysis.found.join(', '),
+        internshipCourses: parsed.internshipCourses ||
+        'Not provided',
+        additionalInfo: parsed.additionalInfo ||
+        '',
+        language: parsed.language ||
+        guessLanguage(resume),
+        license: parsed.license || guessLicense(resume),
+      };
+      const newCount = increaseUsageCount('optimization');
+      const remaining = Math.max(0, 3 - newCount);
+      setResult(analysis);
+      setPaidCV(cv);
+      setProfSentences([]);
+      setError('');
+      setRemainingOutputs(remaining);
+      setMessage(
+        `CV generated successfully. You have ${remaining} CV output(s) remaining in this session.`
+      );
+    } catch (e: any) {
+      setError(e.message || 'AI generation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function updatePaidCVField(field, value) {
+    setPaidCV((old) => ({ ...old, [field]: value }));
+  }
+
+  return (
+    <section className="section">
+      <h2>CV Optimization — {PRICES.optimization}</h2>
+      <p className="muted">
+        Upload your current CV, paste a job description, and get a free preview
+        before unlocking full optimization.
+      </p>
+
+      <StepsStrip
+        steps={[
+          'Upload your CV',
+          'Paste job description',
+          'Get free preview',
+          'Pay & get full optimized CV',
+        ]}
+      />
+
+      <div className="grid">
+        <input type="file" accept=".pdf,.docx,.txt" onChange={readFile} />
+        <textarea
+          placeholder="Paste your CV here or upload PDF / DOCX / TXT..."
+          value={resume}
+          onChange={(e) => setResume(e.target.value)}
+        />
+        <textarea
+          placeholder="Paste the job description here..."
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+        />
+      </div>
+
+      {message && <p className="success">{message}</p>}
+      {error && <p className="error">{error}</p>}
+
+      <div 
+      className="button-row">
+        <button onClick={runFreePreview}>Get Free Preview</button>
+      </div>
+
+      {result && (
+        <div className="preview-box" style={{ display: 'block', padding: 22 }}>
+          {/* ── Score header row ── */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 18,
+              marginBottom: 20,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div
+              style={{
+                background: '#0f172a',
+                color: 'white',
+                borderRadius: 14,
+                padding: '12px 22px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minWidth: 90,
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 38, fontWeight: 
+              900, lineHeight: 1 }}>
+                {result.score}
+              </span>
+              <span style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                {result.level}
+              </span>
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <p style={{ fontWeight: 700, marginBottom: 4 }}>Free Preview</p>
+              <p style={{ color: '#94a3b8', fontSize: 13 }}>
+                Your resume has potential, but it is not fully optimized for
+                this job.
+              </p>
+            </div>
+          </div>
+
+          {/* ── 3 Bars compact ── */}
+          <div
+            style={{
+              background: '#0c1728',
+              borderRadius: 12,
+              padding: '14px 16px',
+              marginBottom: 18,
+            }}
+          >
+            <AnimatedBar
+              label="Keyword match"
+              value={result.keywordMatchPct}
+              color="#2563eb"
+              delay={100}
+            />
+            <AnimatedBar
+              label="Professional sentences"
+              value={result.professionalScore}
+              color="#16a34a"
+              delay={400}
+            />
+            <AnimatedBar
+              label="Overall CV score"
+              value={result.score}
+              color="#d97706"
+              delay={700}
+            />
+          </div>
+
+          {/* ── Missing keywords ── */}
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+              Missing Keywords
+              <span
+                style={{
+                  fontWeight: 400,
+                  color: '#94a3b8',
+                  fontSize: 13,
+                  marginLeft: 8,
+                }}
+              >
+                We found{' '}
+                <b style={{ color: '#f1f5f9' }}>{result.missingCount}</b>{' '}
+                missing important keywords.
+              </span>
+            </p>
+
+            {/* Before payment: blurred */}
+            {!paymentConfirmed && (
+              <div className="tags">
+                {result.previewMissing.map((k) => (
+                  <span
+                    key={k}
+                    style={{
+                      filter: 'blur(5px)',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {k}
+                  </span>
+                ))}
+                {result.missingCount > 3 && (
+                  <span
+                    style={{
+                      background: '#1e293b',
+                      border: '1px solid 
+                      #334155',
+                      borderRadius: 999,
+                      padding: '6px 12px',
+                      fontSize: 13,
+                      color: '#94a3b8',
+                    }}
+                  >
+                    +{result.missingCount - 3} more (unlocked after payment)
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* ── After payment: show all keywords clearly ── */}
+            {paymentConfirmed && (
+              <>
+                <div style={{ marginBottom: 10 }}>
+                  <p
+                    style={{
+                      marginBottom: 6,
+                      fontWeight: 700,
+                      color: '#15803d',
+                    }}
+                  >
+                    ✓ Keywords found in your CV:
+                  </p>
+                  <div className="tags">
+                    {result.found.map((k) => (
+                      <span
+                        key={k}
+                        style={{
+                          background: '#dcfce7',
+                          color: '#166534',
+                          borderRadius: 999,
+                          padding: '6px 12px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <p
+                    style={{
+                      marginBottom: 6,
+                      fontWeight: 700,
+                      color: '#dc2626',
+                    }}
+                  >
+                    ✗ Missing keywords (added to your CV):
+                  </p>
+                  <div className="tags">
+                    {result.missing.map((k) => (
+                      <span
+                        key={k}
+                        style={{
+                          background: '#fee2e2',
+                          color: '#991b1b',
+                          borderRadius: 999,
+                          padding: '6px 12px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Quick Improvement */}
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+              Quick Improvement
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: 13 }}>
+              {result.quickImprovement}
+            </p>
+          </div>
+
+          <div className="locked-card">
+            <h3>Unlock Full CV Optimization — {PRICES.optimization}</h3>
+            <p>
+              Get the complete ATS keyword report, rewritten summary with
+              professional sentences, improved experience section, skills
+              optimization, and a downloadable PDF CV.
+            </p>
+            {paymentConfirmed ?
+            (
+              <div>
+                <p className="success">
+                  Payment confirmed. You can generate up to 3 optimized CVs
+                  while this page is open. Remaining outputs: {remainingOutputs}
+                </p>
+                <button onClick={generatePaidOptimizationCV} disabled={loading}>
+                  {loading
+                    ? '⏳ AI is writing your CV...'
+                    : 'Generate Full Optimized CV'}
+                </button>
+              </div>
+            ) : showPayment ?
+            (
+              <StripeWrapper
+                service="optimization"
+                onSuccess={() => {
+                  setShowPayment(false);
+                  setPaymentConfirmed(true);
+                  setRemainingOutputs(3);
+                  sessionStorage.setItem('resuvanta_paid_optimization', 'true');
+                  sessionStorage.setItem('resuvanta_outputs_optimization', '3');
+                  setMessage(
+                    'Payment confirmed. You can generate up to 3 optimized CVs while this page is open.'
+                  );
+                }}
+                onCancel={() => setShowPayment(false)}
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  if (!resume.trim() || !jobDescription.trim()) {
+                    setError(
+                      'Please upload CV and paste job description first.'
+                    );
+                    return;
+                  }
+                  setShowPayment(true);
+                }}
+              >
+                Optimize My CV — {PRICES.optimization}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {paidCV && (
+        <div className="paid-output">
+          <h3>Edit Your Optimized CV Before PDF</h3>
+          <p className="muted">
+            Professional sentences have been added automatically. Edit any
+            field, then download your PDF.
+          </p>
+
+          {profSentences.length > 0 && (
+            <div
+              style={{
+                background: 'rgba(22,163,74,0.1)',
+                border: '1px solid rgba(22,163,74,0.3)',
+                borderRadius: 12,
+                padding: 14,
+                marginBottom: 20,
+              }}
+            >
+              <p style={{ fontWeight: 700, color: '#4ade80', marginBottom: 8 }}>
+                ✓ Professional sentences added automatically:
+              </p>
+              {profSentences.map((s, i) => (
+                <p
+                  key={i}
+                  style={{ color: '#86efac', fontSize: 13, marginBottom: 4 }}
+                >
+                  • {s}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* ── Personal Info Row ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 12,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Personal Information
+            </p>
+            <div
+              style={{
+                display: 
+                'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Full Name
+                </label>
+                <input
+                  value={paidCV.name}
+                  onChange={(e) => updatePaidCVField('name', e.target.value)}
+                  placeholder="e.g.
+                  John Smith"
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: 
+                    'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Phone Number
+                </label>
+                <input
+                  value={paidCV.phone}
+                  onChange={(e) => updatePaidCVField('phone', e.target.value)}
+                  placeholder="e.g.
+                  +971 50 123 4567"
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Email Address
+                </label>
+                <input
+                  value={paidCV.email}
+                  onChange={(e) => updatePaidCVField('email', e.target.value)}
+                  placeholder="e.g.
+                  name@email.com"
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  LinkedIn URL
+                </label>
+                <input
+                  value={paidCV.linkedin}
+                  onChange={(e) =>
+                    updatePaidCVField('linkedin', e.target.value)
+                  }
+                  placeholder="e.g.
+                  linkedin.com/in/yourname"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Summary ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 6,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Professional Summary
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+              Write 3–5 sentences 
+              about your background, skills, and career
+              goal.
+            </p>
+            <textarea
+              style={{ minHeight: 120 }}
+              value={paidCV.summary}
+              onChange={(e) => updatePaidCVField('summary', e.target.value)}
+              placeholder="e.g. Results-focused pharmacist with 5+ years of experience in clinical pharmacy..."
+            />
+          </div>
+
+          {/* ── Experience ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 6,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Professional Experience
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+              List each role with company, dates, and key achievements. Use
+              bullet points (•) for each achievement.
+            </p>
+            <textarea
+              style={{ minHeight: 160 }}
+              value={paidCV.experience}
+              onChange={(e) => updatePaidCVField('experience', e.target.value)}
+              placeholder={
+                'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients\n• Reduced approval turnaround by 30%'
+              }
+            />
+          </div>
+
+          {/* ── Education ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 6,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Education
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+              Include your degree, university, graduation year, and country.
+            </p>
+            <textarea
+              style={{ minHeight: 80 }}
+              value={paidCV.education}
+              onChange={(e) => updatePaidCVField('education', e.target.value)}
+              placeholder={
+                'e.g.\nBachelor of Pharmacy\nCairo University |
+                2018 | Egypt'
+              }
+            />
+          </div>
+
+          {/* ── Skills Row ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 12,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Skills
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Soft Skills
+                </label>
+                <p style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>
+                  Personal and interpersonal skills.
+                </p>
+                <textarea
+                  style={{ minHeight: 80 }}
+                  value={paidCV.softSkills}
+                  onChange={(e) =>
+                    updatePaidCVField('softSkills', e.target.value)
+                  }
+                  placeholder="e.g. Communication, teamwork, problem solving..."
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Technical Skills
+                </label>
+                <p style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>
+                  Job-specific tools, software, and knowledge areas.
+                </p>
+                <textarea
+                  style={{ minHeight: 80 }}
+                  value={paidCV.technicalSkills}
+                  onChange={(e) =>
+                    updatePaidCVField('technicalSkills', e.target.value)
+                  }
+                  placeholder="e.g. Clinical pharmacy, dispensing, CRM, regulatory affairs..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Internship & Courses ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 6,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Internship and Courses
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+              List internships, training programs, and courses with dates.
+            </p>
+            <textarea
+              style={{ minHeight: 100 }}
+              value={paidCV.internshipCourses}
+              onChange={(e) =>
+                updatePaidCVField('internshipCourses', e.target.value)
+              }
+              placeholder={
+                'e.g.\nPharmacy Internship — Cairo Hospital (2017)\nAntimicrobial Course — February 2020'
+              }
+            />
+          </div>
+
+          {/* ── Additional Info Row ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 12,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Additional Details
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Languages
+                </label>
+                <input
+                  value={paidCV.language}
+                  onChange={(e) =>
+                    updatePaidCVField('language', e.target.value)
+                  }
+                  placeholder="e.g.
+                  Arabic (native), English (fluent)"
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#64748b',
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}
+                >
+                  Licenses & Certifications
+                </label>
+                <input
+                  value={paidCV.license}
+                  onChange={(e) => updatePaidCVField('license', e.target.value)}
+                  placeholder="e.g.
+                  UAE Pharmacist License, DHA"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Additional Info ── */}
+          <div style={{ marginBottom: 24 }}>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 6,
+                color: '#94a3b8',
+                borderBottom: '1px solid #24344f',
+                paddingBottom: 8,
+              }}
+            >
+              Additional Information
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+              Any other relevant information like driving license, volunteering,
+              or awards.
+            </p>
+            <textarea
+              style={{ minHeight: 80 }}
+              value={paidCV.additionalInfo}
+              onChange={(e) =>
+                updatePaidCVField('additionalInfo', e.target.value)
+              }
+              placeholder="e.g.
+              UAE driving license holder. Available for immediate joining."
+            />
+          </div>
+
+          <h3>Live Preview</h3>
+          <CVTemplatePreview cv={paidCV} />
+
+          <button
+            onClick={() => {
+              openPDFWindow(paidCV, 'Optimized CV');
+              clearServiceSession('optimization');
+              setPaymentConfirmed(false);
+              setRemainingOutputs(3);
+              setIsPaying(false);
+              setResume('');
+              setJobDescription('');
+              setResult(null);
+              setPaidCV(null);
+              setProfSentences([]);
+              setMessage(
+                'PDF downloaded. Temporary session data has been cleared.'
+              );
+            }}
+          >
+            Download PDF
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Builder Wizard ───────────────────────────────────────────────────────────
+function BuilderWizard() {
+  const [step, setStep] = useState(1);
+  const [builtCV, setBuiltCV] = useState(null);
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [remainingOutputs, setRemainingOutputs] = useState(3);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showBuilderPayment, setShowBuilderPayment] = useState(false);
+  const [builder, setBuilder] = useState({
+    targetJob: '',
+    jobDescription: '',
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    linkedin: '',
+    degree: '',
+    university: '',
+    graduationYear: '',
+    educationCountry: '',
+    experiences: [
+      {
+        jobTitle: '',
+        company: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        responsibilities: '',
+        achievements: '',
+      },
+    ],
+    softSkills: '',
+    technicalSkills: '',
+    internships: '',
+    courses: '',
+    languages: '',
+    licenses: '',
+    additionalInfo: '',
+  });
+  const totalSteps = 7;
+
+  useEffect(() => {
+    setIsPaying(false);
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const saved = sessionStorage.getItem('resuvanta_pending_builder');
+    if (payment === 'success' && saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.builder) setBuilder(data.builder);
+        const used = getUsageCount('builder');
+        setPaymentConfirmed(true);
+        setRemainingOutputs(Math.max(0,
