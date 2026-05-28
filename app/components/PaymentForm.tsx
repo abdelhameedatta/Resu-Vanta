@@ -32,7 +32,6 @@ export default function PaymentForm({ serviceName, onSuccess }: PaymentFormProps
     if (error) {
       setErrorMessage(error.message || 'An unexpected error occurred.');
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-      // حفظ الجلسة في sessionStorage
       sessionStorage.setItem('unlockedService', serviceName);
       sessionStorage.setItem('usageCount', '0');
       onSuccess(serviceName);
