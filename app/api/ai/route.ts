@@ -1,80 +1,6 @@
 // app/api/ai/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const PROMPTS = {
-  optimization: (resume: string, jobDescription: string) => `
-You are a professional CV writer. The CV text below may have spacing issues because it was extracted from a PDF. Please read it carefully and rewrite it as a professional optimized CV.
-
-IMPORTANT RULES:
-- Read the CV carefully even if letters are spaced out like "A B D E L H A M E E D"
-- Extract the real name, contact details, experience, education from the text
-- Only use information from the CV, do not invent anything
-- Make it ATS-friendly with keywords from the job description
-- Use professional language and strong action verbs
-
-JOB DESCRIPTION:
-${jobDescription}
-
-ORIGINAL CV TEXT:
-${resume}
-
-Return the optimized CV with these EXACT section labels on their own line:
-SUMMARY:
-PROFESSIONAL EXPERIENCE:
-EDUCATION:
-TECHNICAL SKILLS:
-SOFT SKILLS:
-INTERNSHIP AND COURSES:
-LANGUAGES:
-LICENSES:
-ADDITIONAL INFORMATION:
-`,
-
-  builder: (data: string) => `
-You are a professional CV writer. Create a complete ATS-optimized CV based on the following information.
-
-IMPORTANT RULES:
-- Write in a professional tone with strong action verbs
-- Make it ATS-friendly
-- Return ONLY the CV content
-
-CANDIDATE INFORMATION:
-${data}
-
-Return the CV with these EXACT section labels on their own line:
-SUMMARY:
-PROFESSIONAL EXPERIENCE:
-EDUCATION:
-TECHNICAL SKILLS:
-SOFT SKILLS:
-INTERNSHIP AND COURSES:
-LANGUAGES:
-LICENSES:
-ADDITIONAL INFORMATION:
-`,
-
-  linkedin: (targetRole: string, experience: string) => `
-You are a LinkedIn profile optimization expert. Create optimized LinkedIn profile content.
-
-TARGET ROLE: ${targetRole}
-EXPERIENCE: ${experience}
-
-Return exactly these 4 sections:
-
-HEADLINE:
-(Optimized LinkedIn headline, max 220 characters)
-
-ABOUT:
-(Optimized About section, max 2000 characters, first person)
-
-SKILLS:
-(10 key skills, comma separated)
-
-RECRUITER KEYWORDS:
-(10 keywords, comma separated)
-`,
-};
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -90,17 +16,75 @@ export async function POST(req: NextRequest) {
       if (!resume || !jobDescription) {
         return NextResponse.json({ error: 'Resume and job description are required' }, { status: 400 });
       }
-      prompt = PROMPTS.optimization(resume, jobDescription);
+      prompt = `You are a professional CV writer. The CV text below may have spacing issues because it was extracted from a PDF (letters may appear spaced out like "A B D E L H A M E E D" - read them as normal words).
+
+Read the CV carefully, extract all information, and create an optimized version tailored to the job description.
+
+JOB DESCRIPTION:
+${jobDescription}
+
+ORIGINAL CV TEXT:
+${resume}
+
+IMPORTANT: You MUST respond with ONLY a valid JSON object, no other text, no markdown, no explanation. The JSON must have exactly these keys:
+{
+  "name": "full name extracted from CV",
+  "phone": "phone number",
+  "email": "email address",
+  "linkedin": "linkedin url or Not provided",
+  "summary": "optimized professional summary 3-5 sentences tailored to the job",
+  "experience": "all work experience with job titles, companies, dates, and bullet points",
+  "education": "all education details with degrees, universities, years",
+  "softSkills": "relevant soft skills comma separated",
+  "technicalSkills": "technical skills and keywords from CV and job description comma separated",
+  "internshipCourses": "internships and courses with dates",
+  "language": "languages spoken",
+  "license": "licenses and certifications",
+  "additionalInfo": "any other relevant information"
+}`;
+
     } else if (service === 'builder') {
       if (!builderData) {
         return NextResponse.json({ error: 'Builder data is required' }, { status: 400 });
       }
-      prompt = PROMPTS.builder(builderData);
+      prompt = `You are a professional CV writer. Create a complete ATS-optimized CV based on this information:
+
+${builderData}
+
+IMPORTANT: You MUST respond with ONLY a valid JSON object, no other text, no markdown, no explanation. The JSON must have exactly these keys:
+{
+  "name": "candidate name",
+  "phone": "phone",
+  "email": "email",
+  "linkedin": "linkedin or Not provided",
+  "summary": "professional summary 3-5 sentences",
+  "experience": "work experience with titles, companies, dates, bullet points",
+  "education": "education details",
+  "softSkills": "soft skills comma separated",
+  "technicalSkills": "technical skills comma separated",
+  "internshipCourses": "internships and courses",
+  "language": "languages",
+  "license": "licenses and certifications",
+  "additionalInfo": "additional information"
+}`;
+
     } else if (service === 'linkedin') {
       if (!targetRole || !experience) {
         return NextResponse.json({ error: 'Target role and experience are required' }, { status: 400 });
       }
-      prompt = PROMPTS.linkedin(targetRole, experience);
+      prompt = `You are a LinkedIn profile optimization expert.
+
+TARGET ROLE: ${targetRole}
+EXPERIENCE: ${experience}
+
+IMPORTANT: You MUST respond with ONLY a valid JSON object, no other text, no markdown, no explanation:
+{
+  "headline": "optimized LinkedIn headline max 220 characters",
+  "about": "optimized About section max 2000 characters first person compelling",
+  "skills": "10 key skills comma separated",
+  "recruiterKeywords": "10 recruiter search keywords comma separated"
+}`;
+
     } else {
       return NextResponse.json({ error: 'Invalid service' }, { status: 400 });
     }
@@ -130,7 +114,14 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     const result = data.content?.[0]?.text || '';
 
-    return NextResponse.json({ result });
+    // Try to parse as JSON
+    try {
+      const clean = result.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      return NextResponse.json({ result, parsed });
+    } catch {
+      return NextResponse.json({ result, parsed: null });
+    }
 
   } catch (error: any) {
     console.error('AI route error:', error);
