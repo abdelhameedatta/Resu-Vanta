@@ -1,12 +1,8 @@
 // @ts-nocheck
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
-
-const StripeWrapper = dynamic(() => import('./components/StripeWrapper'), {
-  ssr: false,
-});
+import React, { useEffect, useState } from 'react';
+import StripeWrapper from './components/StripeWrapper';
 
 const PRICES = {
   optimization: '$7.99',
@@ -15,7 +11,7 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
-async function callAI(payload: Record<string, string>): Promise<{result: string, parsed: any}> {
+async function callAI(payload: Record<string, string>): Promise<string> {
   const res = await fetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -23,28 +19,25 @@ async function callAI(payload: Record<string, string>): Promise<{result: string,
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return { result: data.result || '', parsed: data.parsed || null };
+  return data.result || '';
 }
 
 function parseAICV(text: string) {
-  function extract(label: string, nextLabels: string[]) {
-    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const escapedNext = nextLabels.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const endPattern = escapedNext.length > 0 ? '(?=' + escapedNext.join('|') + ')' : '$';
-    const pattern = new RegExp(escapedLabel + '[:\\s#*-]*([\\s\\S]*?)' + endPattern, 'i');
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(label + '[:\s]*([\s\S]*?)(?=' + next.join('|') + '|$)', 'i');
     const match = text.match(pattern);
-    return match ? match[1].replace(/^[#*\\-\\s]+|[#*\\s]+$/g, '').trim() : '';
+    return match ? match[1].trim() : '';
   }
-  const s = ['SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
+  const sections = ['SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
   return {
-    summary: extract('SUMMARY', s.slice(1)),
-    experience: extract('PROFESSIONAL EXPERIENCE', s.slice(2)),
-    education: extract('EDUCATION', s.slice(3)),
-    technicalSkills: extract('TECHNICAL SKILLS', s.slice(4)),
-    softSkills: extract('SOFT SKILLS', s.slice(5)),
-    internshipCourses: extract('INTERNSHIP AND COURSES', s.slice(6)),
-    language: extract('LANGUAGES', s.slice(7)),
-    license: extract('LICENSES', s.slice(8)),
+    summary: extract('SUMMARY', sections.slice(1)),
+    experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(2)),
+    education: extract('EDUCATION', sections.slice(3)),
+    technicalSkills: extract('TECHNICAL SKILLS', sections.slice(4)),
+    softSkills: extract('SOFT SKILLS', sections.slice(5)),
+    internshipCourses: extract('INTERNSHIP AND COURSES', sections.slice(6)),
+    language: extract('LANGUAGES', sections.slice(7)),
+    license: extract('LICENSES', sections.slice(8)),
     additionalInfo: extract('ADDITIONAL INFORMATION', []),
   };
 }
@@ -61,33 +54,6 @@ function parseLinkedInOutput(text: string) {
     skills: extract('SKILLS', ['RECRUITER']),
     recruiterKeywords: extract('RECRUITER KEYWORDS', []),
   };
-}
-
-// ─── Checkout ────────────────────────────────────────────────────────────────
-async function startCheckout(service = 'optimization', savedData = {}) {
-  sessionStorage.setItem(
-    `resuvanta_pending_${service}`,
-    JSON.stringify(savedData)
-  );
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-  try {
-    const response = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    const data = await response.json();
-    if (data.url) { window.location.href = data.url; return; }
-    throw new Error(data.error || 'Payment failed');
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
 }
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
@@ -170,13 +136,6 @@ function analyzeResume(resume, jobDescription) {
   if (!hasNumbers) quickImprovement = 'Add measurable achievements using numbers, percentages, or clear results.';
   else if (!hasSkills) quickImprovement = 'Add a clear Skills section with the most relevant keywords from the job description.';
   else if (!hasExperience) quickImprovement = 'Rewrite your experience section with stronger action verbs and role-specific responsibilities.';
-  const fullSuggestions = [
-    'Add missing job-specific keywords naturally into the resume.',
-    'Rewrite the professional summary to match the target job.',
-    'Add measurable achievements where possible.',
-    'Use clear ATS-friendly headings.',
-    'Keep the resume simple and avoid heavy graphics or tables.',
-  ];
   const risks = [];
   if (/license|certified|certification/.test(jobText) && !/license|certified|certification/.test(resumeText))
     risks.push('The job may require a license or certification that is not visible in the resume.');
@@ -187,7 +146,7 @@ function analyzeResume(resume, jobDescription) {
   if (!risks.length) risks.push('No major knockout risk detected from the visible text.');
   return { score, professionalScore, keywordMatchPct, level, found, missing,
     previewMissing: missing.slice(0,3), missingCount: missing.length,
-    quickImprovement, fullSuggestions, risks };
+    quickImprovement, risks };
 }
 
 // ─── Professional sentences generator ────────────────────────────────────────
@@ -211,7 +170,7 @@ function generateProfessionalSentences(jobDescription, foundKeywords) {
   return sentences.slice(0, 4);
 }
 
-// ─── CV builders ─────────────────────────────────────────────────────────────
+// ─── CV helpers ───────────────────────────────────────────────────────────────
 function guessName(resume) {
   const lines = resume.split('\n').map(l=>l.trim()).filter(Boolean);
   const first = lines[0] || '';
@@ -222,12 +181,10 @@ function guessEducation(resume) {
   return sectionFromResume(resume, ['education','academic','qualifications']) || 'Please add your education details here.';
 }
 function guessLanguage(resume) {
-  const sec = sectionFromResume(resume, ['language','languages']);
-  return sec || 'Not provided';
+  return sectionFromResume(resume, ['language','languages']) || 'Not provided';
 }
 function guessLicense(resume) {
-  const sec = sectionFromResume(resume, ['license','licence','licenses']);
-  return sec || 'Not provided';
+  return sectionFromResume(resume, ['license','licence','licenses']) || 'Not provided';
 }
 function guessEmail(resume) { const m=resume.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i); return m?m[0]:'Not provided'; }
 function guessPhone(resume) { const m=resume.match(/(\+?\d[\d\s().-]{7,}\d)/); return m?m[0]:'Not provided'; }
@@ -249,55 +206,6 @@ function sectionFromResume(resume, sectionNames) {
     if (line) collected.push(line);
   }
   return collected.join('\n').trim();
-}
-
-function createOptimizedCV(resume, jobDescription) {
-  const analysis = analyzeResume(resume, jobDescription);
-  const profSentences = generateProfessionalSentences(jobDescription, analysis.found);
-  const name = guessName(resume);
-  const email = guessEmail(resume);
-  const phone = guessPhone(resume);
-  const linkedin = guessLinkedIn(resume);
-
-  // Try to extract sections — if empty, leave blank for user to fill
-  let summaryFromResume = sectionFromResume(resume,['summary','profile','professional summary','objective']);
-  let experienceFromResume = sectionFromResume(resume,['experience','professional experience','employment','work experience','work history']);
-  let educationFromResume = sectionFromResume(resume,['education','academic','qualifications']);
-  let skillsFromResume = sectionFromResume(resume,['skills','core skills','technical skills','key skills']);
-  let coursesFromResume = sectionFromResume(resume,['courses','training','internship','internships','certifications','certification']);
-  let languageFromResume = sectionFromResume(resume,['language','languages']);
-  let licenseFromResume = sectionFromResume(resume,['license','licence','licenses']);
-
-  // If the courses/training section was accidentally put into experience, detect it
-  // (happens with unstructured PDFs where all text merges)
-  const hasSectionHeadings = /\n(EXPERIENCE|EDUCATION|SKILLS|SUMMARY|EMPLOYMENT)/i.test(resume);
-  if (!hasSectionHeadings && !experienceFromResume) {
-    // PDF was unstructured — put a helpful placeholder
-    experienceFromResume = '• Please paste your work experience here manually.\n• Include job title, company, dates, and key responsibilities.';
-  }
-  if (!educationFromResume) {
-    educationFromResume = 'Please add your education details here (degree, university, year, country).';
-  }
-
-  const keywordSkills = [...new Set([...analysis.found,...analysis.missing])].slice(0,14);
-  const enhancedSummary = (summaryFromResume || 'Results-focused candidate with experience aligned to the target role.') + '\n\n' + profSentences.join(' ');
-
-  return {
-    cv: {
-      name: name||'NAME', address:'Not provided', phone, email, linkedin,
-      summary: enhancedSummary,
-      experience: experienceFromResume || '• Add your work experience here.\n• Include job title, company, dates, and key responsibilities.',
-      education: educationFromResume,
-      softSkills:'Communication, teamwork, problem solving, time management, adaptability, attention to detail',
-      technicalSkills: skillsFromResume||(keywordSkills.length?keywordSkills.join(', '):'Not provided'),
-      internshipCourses: coursesFromResume||'Not provided',
-      additionalInfo: '• You can edit this section freely.\n• Add any awards, volunteer work, or other relevant information.',
-      language: languageFromResume||'Not provided',
-      license: licenseFromResume||'Not provided',
-    },
-    analysis,
-    profSentences,
-  };
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
@@ -332,13 +240,12 @@ function AnimatedBar({ label, value, color, delay = 0 }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       let current = 0;
-      const target = value;
-      const step = target / 60;
+      const step = value / 60;
       const interval = setInterval(() => {
-        current = Math.min(current + step, target);
+        current = Math.min(current + step, value);
         setWidth(Math.round(current));
         setDisplayed(Math.round(current));
-        if (current >= target) clearInterval(interval);
+        if (current >= value) clearInterval(interval);
       }, 16);
       return () => clearInterval(interval);
     }, delay);
@@ -352,10 +259,7 @@ function AnimatedBar({ label, value, color, delay = 0 }) {
         <span style={{ fontSize:15, fontWeight:700, color:'#f1f5f9' }}>{displayed}%</span>
       </div>
       <div style={{ height:12, background:'#1e293b', borderRadius:6, overflow:'hidden' }}>
-        <div style={{
-          height:'100%', borderRadius:6, background:color,
-          width:`${width}%`, transition:'width 0.05s linear',
-        }}/>
+        <div style={{ height:'100%', borderRadius:6, background:color, width:`${width}%`, transition:'width 0.05s linear' }}/>
       </div>
     </div>
   );
@@ -366,16 +270,8 @@ function StepsStrip({ steps }) {
   return (
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18 }}>
       {steps.map((s, i) => (
-        <div key={i} style={{
-          display:'flex', alignItems:'center', gap:8,
-          background:'#101827', border:'1px solid #24344f',
-          borderRadius:999, padding:'6px 14px', fontSize:13, color:'#94a3b8',
-        }}>
-          <span style={{
-            background:'#2563eb', color:'#dbeafe', borderRadius:'50%',
-            width:20, height:20, display:'inline-flex', alignItems:'center',
-            justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0,
-          }}>{i+1}</span>
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:8, background:'#101827', border:'1px solid #24344f', borderRadius:999, padding:'6px 14px', fontSize:13, color:'#94a3b8' }}>
+          <span style={{ background:'#2563eb', color:'#dbeafe', borderRadius:'50%', width:20, height:20, display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{i+1}</span>
           {s}
         </div>
       ))}
@@ -388,9 +284,7 @@ function CVTemplatePreview({ cv }) {
   return (
     <div className="cv-template-preview">
       <h1>{cv.name}</h1>
-      <div className="contact-line">
-        ADDRESS: {cv.address} | PHONE: {cv.phone} | E-MAIL: {cv.email} | LinkedIn: {cv.linkedin}
-      </div>
+      <div className="contact-line">ADDRESS: {cv.address} | PHONE: {cv.phone} | E-MAIL: {cv.email} | LinkedIn: {cv.linkedin}</div>
       <CVSection title="SUMMARY" content={cv.summary} />
       <CVSection title="PROFESSIONAL EXPERIENCE" content={cv.experience} />
       <CVSection title="EDUCATION" content={cv.education} />
@@ -453,31 +347,26 @@ function Home({ setPage }) {
           </ul>
         </div>
       </section>
-
       <section className="home-section">
         <h2>Our Services</h2>
         <div className="service-grid">
           <div className="service-card">
-            <h3>CV Optimization</h3>
-            <h2>{PRICES.optimization}</h2>
+            <h3>CV Optimization</h3><h2>{PRICES.optimization}</h2>
             <p>Upload your current CV and paste the job description. Get a free preview first, then unlock full optimization.</p>
             <button onClick={()=>setPage('optimization')}>Start CV Optimization</button>
           </div>
           <div className="service-card featured">
-            <h3>CV Builder + Optimization</h3>
-            <h2>{PRICES.builder}</h2>
+            <h3>CV Builder + Optimization</h3><h2>{PRICES.builder}</h2>
             <p>No CV yet? Answer guided questions and generate an optimized, ATS-friendly CV for your target job.</p>
             <button onClick={()=>setPage('builder')}>Build & Optimize CV</button>
           </div>
           <div className="service-card">
-            <h3>LinkedIn Optimization</h3>
-            <h2>{PRICES.linkedin}</h2>
+            <h3>LinkedIn Optimization</h3><h2>{PRICES.linkedin}</h2>
             <p>Improve your LinkedIn headline, About section, skills, and recruiter search keywords.</p>
             <button onClick={()=>setPage('linkedin')}>Optimize LinkedIn</button>
           </div>
         </div>
       </section>
-
       <section className="home-section how-it-works">
         <h2>How it works</h2>
         <div className="steps-grid">
@@ -487,7 +376,6 @@ function Home({ setPage }) {
           <div><span>4</span><h3>Download PDF</h3><p>Your final output is delivered as a clean PDF-ready CV.</p></div>
         </div>
       </section>
-
       <section className="home-section">
         <h2>Why use Resuvanta?</h2>
         <div className="features-grid">
@@ -512,14 +400,12 @@ function OptimizationPage() {
   const [profSentences, setProfSentences] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [isPaying, setIsPaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
 
   useEffect(() => {
-    setIsPaying(false);
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
     const saved = sessionStorage.getItem('resuvanta_pending_optimization');
@@ -534,11 +420,10 @@ function OptimizationPage() {
         setJobDescription(savedJobDescription);
         setPaymentConfirmed(true);
         setRemainingOutputs(remaining);
-        setError('');
         if (savedResume.trim() && savedJobDescription.trim())
           setResult(analyzeResume(savedResume, savedJobDescription));
-        setMessage(`Payment confirmed. You can generate up to ${remaining} optimized CV output(s) while this page is open.`);
-      } catch (e) {
+        setMessage(`Payment confirmed. You can generate up to ${remaining} optimized CV output(s).`);
+      } catch {
         setError('Payment confirmed, but we could not restore your saved CV details.');
       }
     }
@@ -557,7 +442,7 @@ function OptimizationPage() {
         const pdf = await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
         let fullText='';
         for (let p=1;p<=pdf.numPages;p++) { const page=await pdf.getPage(p); const c=await page.getTextContent(); fullText+=c.items.map(i=>i.str).join(' ')+'\n\n'; }
-        if (!fullText.trim()) { setError('Could not extract text from this PDF. It may be scanned as an image.'); return; }
+        if (!fullText.trim()) { setError('Could not extract text from this PDF.'); return; }
         setResume(fullText); setMessage('PDF loaded successfully.'); return;
       }
       if (fileName.endsWith('.docx')) {
@@ -578,51 +463,36 @@ function OptimizationPage() {
     setResult(analyzeResume(resume, jobDescription));
   }
 
-  async function handleOptimizationPayment() {
-    if (!resume.trim()||!jobDescription.trim()) { setError('Please upload CV and paste job description first.'); return; }
-    setIsPaying(true); setError('');
-    try { await startCheckout('optimization',{resume,jobDescription}); }
-    catch { setIsPaying(false); setError('Payment connection took too long. Please try again.'); }
-  }
-
   async function generatePaidOptimizationCV() {
     if (!resume.trim()||!jobDescription.trim()) { setError('Please upload CV and paste job description first.'); return; }
     const used = getUsageCount('optimization');
     if (used>=3) { setError('You have used all 3 CV outputs for this payment session.'); return; }
     setLoading(true); setError('');
     try {
-      const { parsed: aiParsed } = await callAI({ service:'optimization', resume, jobDescription });
-      const p = aiParsed || {};
+      const aiText = await callAI({ service:'optimization', resume, jobDescription });
+      const parsed = parseAICV(aiText);
       const analysis = analyzeResume(resume, jobDescription);
       const cv = {
-        name: p.name || guessName(resume) || 'NAME',
-        address: 'Not provided',
-        phone: p.phone || guessPhone(resume),
-        email: p.email || guessEmail(resume),
-        linkedin: p.linkedin || guessLinkedIn(resume),
-        summary: p.summary || 'Please add your summary here.',
-        experience: p.experience || 'Please add your experience here.',
-        education: p.education || guessEducation(resume),
-        softSkills: p.softSkills || 'Communication, teamwork, problem solving, time management',
-        technicalSkills: p.technicalSkills || analysis.found.join(', '),
-        internshipCourses: p.internshipCourses || 'Not provided',
-        additionalInfo: p.additionalInfo || '',
-        language: p.language || guessLanguage(resume),
-        license: p.license || guessLicense(resume),
+        name: guessName(resume)||'NAME', address:'Not provided',
+        phone: guessPhone(resume), email: guessEmail(resume), linkedin: guessLinkedIn(resume),
+        summary: parsed.summary || aiText.slice(0,300),
+        experience: parsed.experience || 'Please add your experience here.',
+        education: parsed.education || guessEducation(resume),
+        softSkills: parsed.softSkills || 'Communication, teamwork, problem solving, time management',
+        technicalSkills: parsed.technicalSkills || analysis.found.join(', '),
+        internshipCourses: parsed.internshipCourses || 'Not provided',
+        additionalInfo: parsed.additionalInfo || '',
+        language: parsed.language || guessLanguage(resume),
+        license: parsed.license || guessLicense(resume),
       };
       const newCount = increaseUsageCount('optimization');
       const remaining = Math.max(0,3-newCount);
-      setResult(analysis);
-      setPaidCV(cv);
-      setProfSentences([]);
-      setError('');
+      setResult(analysis); setPaidCV(cv); setProfSentences([]); setError('');
       setRemainingOutputs(remaining);
-      setMessage(`CV generated successfully. You have ${remaining} CV output(s) remaining in this session.`);
+      setMessage(`CV generated successfully. You have ${remaining} CV output(s) remaining.`);
     } catch(e: any) {
       setError(e.message || 'AI generation failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   function updatePaidCVField(field, value) { setPaidCV(old=>({...old,[field]:value})); }
@@ -631,32 +501,22 @@ function OptimizationPage() {
     <section className="section">
       <h2>CV Optimization — {PRICES.optimization}</h2>
       <p className="muted">Upload your current CV, paste a job description, and get a free preview before unlocking full optimization.</p>
-
       <StepsStrip steps={['Upload your CV','Paste job description','Get free preview','Pay & get full optimized CV']} />
-
       <div className="grid">
         <input type="file" accept=".pdf,.docx,.txt" onChange={readFile} />
         <textarea placeholder="Paste your CV here or upload PDF / DOCX / TXT..." value={resume} onChange={e=>setResume(e.target.value)} />
         <textarea placeholder="Paste the job description here..." value={jobDescription} onChange={e=>setJobDescription(e.target.value)} />
       </div>
-
       {message && <p className="success">{message}</p>}
       {error && <p className="error">{error}</p>}
-
       <div className="button-row">
         <button onClick={runFreePreview}>Get Free Preview</button>
       </div>
 
       {result && (
         <div className="preview-box" style={{display:'block',padding:22}}>
-
-          {/* ── Score header row ── */}
           <div style={{display:'flex',alignItems:'center',gap:18,marginBottom:20,flexWrap:'wrap'}}>
-            <div style={{
-              background:'#0f172a',color:'white',borderRadius:14,
-              padding:'12px 22px',display:'flex',flexDirection:'column',
-              alignItems:'center',minWidth:90,flexShrink:0,
-            }}>
+            <div style={{background:'#0f172a',color:'white',borderRadius:14,padding:'12px 22px',display:'flex',flexDirection:'column',alignItems:'center',minWidth:90,flexShrink:0}}>
               <span style={{fontSize:38,fontWeight:900,lineHeight:1}}>{result.score}</span>
               <span style={{fontSize:12,color:'#94a3b8',marginTop:4}}>{result.level}</span>
             </div>
@@ -665,15 +525,11 @@ function OptimizationPage() {
               <p style={{color:'#94a3b8',fontSize:13}}>Your resume has potential, but it is not fully optimized for this job.</p>
             </div>
           </div>
-
-          {/* ── 3 Bars compact ── */}
           <div style={{background:'#0c1728',borderRadius:12,padding:'14px 16px',marginBottom:18}}>
             <AnimatedBar label="Keyword match" value={result.keywordMatchPct} color="#2563eb" delay={100} />
             <AnimatedBar label="Professional sentences" value={result.professionalScore} color="#16a34a" delay={400} />
             <AnimatedBar label="Overall CV score" value={result.score} color="#d97706" delay={700} />
           </div>
-
-          {/* ── Missing keywords ── */}
           <div style={{marginBottom:16}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:6}}>
               Missing Keywords
@@ -681,8 +537,6 @@ function OptimizationPage() {
                 We found <b style={{color:'#f1f5f9'}}>{result.missingCount}</b> missing important keywords.
               </span>
             </p>
-
-            {/* Before payment: blurred */}
             {!paymentConfirmed && (
               <div className="tags">
                 {result.previewMissing.map(k=>(
@@ -695,8 +549,6 @@ function OptimizationPage() {
                 )}
               </div>
             )}
-
-            {/* ── After payment: show all keywords clearly ── */}
             {paymentConfirmed && (
               <>
                 <div style={{marginBottom:10}}>
@@ -718,37 +570,40 @@ function OptimizationPage() {
               </>
             )}
           </div>
-
-          {/* Quick Improvement */}
           <div style={{marginBottom:16}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:4}}>Quick Improvement</p>
             <p style={{color:'#94a3b8',fontSize:13}}>{result.quickImprovement}</p>
           </div>
-
           <div className="locked-card">
             <h3>Unlock Full CV Optimization — {PRICES.optimization}</h3>
             <p>Get the complete ATS keyword report, rewritten summary with professional sentences, improved experience section, skills optimization, and a downloadable PDF CV.</p>
             {paymentConfirmed ? (
               <div>
-                <p className="success">Payment confirmed. You can generate up to 3 optimized CVs while this page is open. Remaining outputs: {remainingOutputs}</p>
-                <button onClick={generatePaidOptimizationCV} disabled={loading}>{loading ? '⏳ AI is writing your CV...' : 'Generate Full Optimized CV'}</button>
+                <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
+                <button onClick={generatePaidOptimizationCV} disabled={loading}>
+                  {loading ? '⏳ AI is writing your CV...' : 'Generate Full Optimized CV'}
+                </button>
               </div>
+            ) : showPayment ? (
+              <StripeWrapper
+                service="optimization"
+                onSuccess={() => {
+                  setShowPayment(false);
+                  setPaymentConfirmed(true);
+                  setRemainingOutputs(3);
+                  setMessage('Payment confirmed. You can generate up to 3 optimized CVs.');
+                }}
+                onCancel={() => setShowPayment(false)}
+              />
             ) : (
-              <button onClick={async () => {
+              <button onClick={() => {
                 if (!resume.trim() || !jobDescription.trim()) {
                   setError('Please upload CV and paste job description first.');
                   return;
                 }
-                setIsPaying(true);
-                setError('');
-                try {
-                  await startCheckout('optimization', { resume, jobDescription });
-                } catch {
-                  setIsPaying(false);
-                  setError('Payment connection took too long. Please try again.');
-                }
-              }} disabled={isPaying}>
-                {isPaying ? 'Redirecting to payment...' : `Optimize My CV — ${PRICES.optimization}`}
+                setShowPayment(true);
+              }}>
+                Optimize My CV — {PRICES.optimization}
               </button>
             )}
           </div>
@@ -759,164 +614,70 @@ function OptimizationPage() {
         <div className="paid-output">
           <h3>Edit Your Optimized CV Before PDF</h3>
           <p className="muted">Professional sentences have been added automatically. Edit any field, then download your PDF.</p>
-
           {profSentences.length > 0 && (
             <div style={{background:'rgba(22,163,74,0.1)',border:'1px solid rgba(22,163,74,0.3)',borderRadius:12,padding:14,marginBottom:20}}>
               <p style={{fontWeight:700,color:'#4ade80',marginBottom:8}}>✓ Professional sentences added automatically:</p>
-              {profSentences.map((s,i)=>(
-                <p key={i} style={{color:'#86efac',fontSize:13,marginBottom:4}}>• {s}</p>
-              ))}
+              {profSentences.map((s,i)=><p key={i} style={{color:'#86efac',fontSize:13,marginBottom:4}}>• {s}</p>)}
             </div>
           )}
-
-          {/* ── Personal Info Row ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Personal Information
-            </p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Personal Information</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Full Name</label>
-                <input value={paidCV.name} onChange={e=>updatePaidCVField('name',e.target.value)} placeholder="e.g. John Smith"/>
-              </div>
-              <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Phone Number</label>
-                <input value={paidCV.phone} onChange={e=>updatePaidCVField('phone',e.target.value)} placeholder="e.g. +971 50 123 4567"/>
-              </div>
-              <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Email Address</label>
-                <input value={paidCV.email} onChange={e=>updatePaidCVField('email',e.target.value)} placeholder="e.g. name@email.com"/>
-              </div>
-              <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>LinkedIn URL</label>
-                <input value={paidCV.linkedin} onChange={e=>updatePaidCVField('linkedin',e.target.value)} placeholder="e.g. linkedin.com/in/yourname"/>
-              </div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Full Name</label><input value={paidCV.name} onChange={e=>updatePaidCVField('name',e.target.value)} placeholder="e.g. John Smith"/></div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Phone Number</label><input value={paidCV.phone} onChange={e=>updatePaidCVField('phone',e.target.value)} placeholder="e.g. +971 50 123 4567"/></div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Email Address</label><input value={paidCV.email} onChange={e=>updatePaidCVField('email',e.target.value)} placeholder="e.g. name@email.com"/></div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>LinkedIn URL</label><input value={paidCV.linkedin} onChange={e=>updatePaidCVField('linkedin',e.target.value)} placeholder="e.g. linkedin.com/in/yourname"/></div>
             </div>
           </div>
-
-          {/* ── Summary ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Professional Summary
-            </p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Summary</p>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Write 3–5 sentences about your background, skills, and career goal.</p>
-            <textarea
-              style={{minHeight:120}}
-              value={paidCV.summary}
-              onChange={e=>updatePaidCVField('summary',e.target.value)}
-              placeholder="e.g. Results-focused pharmacist with 5+ years of experience in clinical pharmacy..."
-            />
+            <textarea style={{minHeight:120}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
           </div>
-
-          {/* ── Experience ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Professional Experience
-            </p>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements. Use bullet points (•) for each achievement.</p>
-            <textarea
-              style={{minHeight:160}}
-              value={paidCV.experience}
-              onChange={e=>updatePaidCVField('experience',e.target.value)}
-              placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients\n• Reduced approval turnaround by 30%'}
-            />
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Experience</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements.</p>
+            <textarea style={{minHeight:160}} value={paidCV.experience} onChange={e=>updatePaidCVField('experience',e.target.value)} placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients'}/>
           </div>
-
-          {/* ── Education ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Education
-            </p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Education</p>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Include your degree, university, graduation year, and country.</p>
-            <textarea
-              style={{minHeight:80}}
-              value={paidCV.education}
-              onChange={e=>updatePaidCVField('education',e.target.value)}
-              placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}
-            />
+            <textarea style={{minHeight:80}} value={paidCV.education} onChange={e=>updatePaidCVField('education',e.target.value)} placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}/>
           </div>
-
-          {/* ── Skills Row ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Skills
-            </p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Skills</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div>
                 <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Soft Skills</label>
-                <p style={{fontSize:11,color:'#475569',marginBottom:6}}>Personal and interpersonal skills.</p>
-                <textarea
-                  style={{minHeight:80}}
-                  value={paidCV.softSkills}
-                  onChange={e=>updatePaidCVField('softSkills',e.target.value)}
-                  placeholder="e.g. Communication, teamwork, problem solving..."
-                />
+                <textarea style={{minHeight:80}} value={paidCV.softSkills} onChange={e=>updatePaidCVField('softSkills',e.target.value)} placeholder="e.g. Communication, teamwork..."/>
               </div>
               <div>
                 <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Technical Skills</label>
-                <p style={{fontSize:11,color:'#475569',marginBottom:6}}>Job-specific tools, software, and knowledge areas.</p>
-                <textarea
-                  style={{minHeight:80}}
-                  value={paidCV.technicalSkills}
-                  onChange={e=>updatePaidCVField('technicalSkills',e.target.value)}
-                  placeholder="e.g. Clinical pharmacy, dispensing, CRM, regulatory affairs..."
-                />
+                <textarea style={{minHeight:80}} value={paidCV.technicalSkills} onChange={e=>updatePaidCVField('technicalSkills',e.target.value)} placeholder="e.g. Clinical pharmacy, dispensing..."/>
               </div>
             </div>
           </div>
-
-          {/* ── Internship & Courses ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Internship and Courses
-            </p>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List internships, training programs, and courses with dates.</p>
-            <textarea
-              style={{minHeight:100}}
-              value={paidCV.internshipCourses}
-              onChange={e=>updatePaidCVField('internshipCourses',e.target.value)}
-              placeholder={'e.g.\nPharmacy Internship — Cairo Hospital (2017)\nAntimicrobial Course — February 2020'}
-            />
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Internship and Courses</p>
+            <textarea style={{minHeight:100}} value={paidCV.internshipCourses} onChange={e=>updatePaidCVField('internshipCourses',e.target.value)} placeholder={'e.g.\nPharmacy Internship — Cairo Hospital (2017)'}/>
           </div>
-
-          {/* ── Additional Info Row ── */}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Additional Details
-            </p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Details</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Languages</label>
-                <input value={paidCV.language} onChange={e=>updatePaidCVField('language',e.target.value)} placeholder="e.g. Arabic (native), English (fluent)"/>
-              </div>
-              <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Licenses & Certifications</label>
-                <input value={paidCV.license} onChange={e=>updatePaidCVField('license',e.target.value)} placeholder="e.g. UAE Pharmacist License, DHA"/>
-              </div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Languages</label><input value={paidCV.language} onChange={e=>updatePaidCVField('language',e.target.value)} placeholder="e.g. Arabic (native), English (fluent)"/></div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Licenses & Certifications</label><input value={paidCV.license} onChange={e=>updatePaidCVField('license',e.target.value)} placeholder="e.g. UAE Pharmacist License, DHA"/></div>
             </div>
           </div>
-
-          {/* ── Additional Info ── */}
           <div style={{marginBottom:24}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>
-              Additional Information
-            </p>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Any other relevant information like driving license, volunteering, or awards.</p>
-            <textarea
-              style={{minHeight:80}}
-              value={paidCV.additionalInfo}
-              onChange={e=>updatePaidCVField('additionalInfo',e.target.value)}
-              placeholder="e.g. UAE driving license holder. Available for immediate joining."
-            />
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Information</p>
+            <textarea style={{minHeight:80}} value={paidCV.additionalInfo} onChange={e=>updatePaidCVField('additionalInfo',e.target.value)} placeholder="e.g. UAE driving license holder."/>
           </div>
-
           <h3>Live Preview</h3>
           <CVTemplatePreview cv={paidCV} />
-
           <button onClick={()=>{
             openPDFWindow(paidCV,'Optimized CV');
             clearServiceSession('optimization');
-            setPaymentConfirmed(false); setRemainingOutputs(3); setIsPaying(false);
+            setPaymentConfirmed(false); setRemainingOutputs(3);
             setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
             setMessage('PDF downloaded. Temporary session data has been cleared.');
           }}>Download PDF</button>
@@ -930,7 +691,6 @@ function OptimizationPage() {
 function BuilderWizard() {
   const [step, setStep] = useState(1);
   const [builtCV, setBuiltCV] = useState(null);
-  const [isPaying, setIsPaying] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -944,7 +704,6 @@ function BuilderWizard() {
   const totalSteps = 7;
 
   useEffect(()=>{
-    setIsPaying(false);
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
     const saved = sessionStorage.getItem('resuvanta_pending_builder');
@@ -973,78 +732,32 @@ function BuilderWizard() {
       return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
-  function generateBuilderCV() {
-    const skillKeywords = extractKeywords(`${builder.targetJob} ${builder.jobDescription} ${builder.technicalSkills}`,10);
-    const cv = {
-      name:builder.name||'NAME', address:builder.address||'Not provided',
-      phone:builder.phone||'Not provided', email:builder.email||'Not provided',
-      linkedin:builder.linkedin||'Not provided',
-      summary:`Motivated professional seeking a ${builder.targetJob||'target'} position. This CV has been built and optimized for the target role by highlighting relevant experience, skills, and ATS-friendly keywords.`,
-      experience:formatExperience(),
-      education:`${builder.degree||'Degree not provided'}\n${builder.university||'University not provided'} | ${builder.graduationYear||'Year not provided'} | ${builder.educationCountry||'Country not provided'}`,
-      softSkills:builder.softSkills||'Communication, teamwork, problem solving, time management, attention to detail',
-      technicalSkills:builder.technicalSkills||(skillKeywords.length?skillKeywords.join(', '):'Not provided'),
-      internshipCourses:`${builder.internships||'Internship not provided'}\n${builder.courses||'Courses not provided'}`,
-      additionalInfo:builder.additionalInfo||'CV built with ATS-friendly structure and optimized for the target role.',
-      language:builder.languages||'Not provided', license:builder.licenses||'Not provided',
-    };
-    setBuiltCV(cv);
-  }
-  async function handleBuilderPayment() {
-    setIsPaying(true);
-    try { await startCheckout('builder',{builder}); }
-    catch { setIsPaying(false); alert('Payment connection took too long. Please try again.'); }
-  }
   async function generatePaidBuilderCV() {
     if (getUsageCount('builder')>=3) { alert('You have used all 3 CV outputs for this payment session.'); return; }
     setIsGenerating(true);
     try {
-      const builderData = `
-Target Job: ${builder.targetJob}
-Job Description: ${builder.jobDescription}
-Name: ${builder.name}
-Address: ${builder.address}
-Phone: ${builder.phone}
-Email: ${builder.email}
-LinkedIn: ${builder.linkedin}
-Degree: ${builder.degree}
-University: ${builder.university}
-Graduation Year: ${builder.graduationYear}
-Country: ${builder.educationCountry}
-Experience: ${builder.experiences.map(e => `${e.jobTitle} at ${e.company} (${e.startDate}-${e.endDate}): ${e.responsibilities} | Achievements: ${e.achievements}`).join(' | ')}
-Soft Skills: ${builder.softSkills}
-Technical Skills: ${builder.technicalSkills}
-Internships: ${builder.internships}
-Courses: ${builder.courses}
-Languages: ${builder.languages}
-Licenses: ${builder.licenses}
-Additional: ${builder.additionalInfo}
-      `;
-      const { parsed: aiParsed } = await callAI({ service:'builder', builderData });
-      const p = aiParsed || {};
+      const builderData = `Target Job: ${builder.targetJob}\nJob Description: ${builder.jobDescription}\nName: ${builder.name}\nAddress: ${builder.address}\nPhone: ${builder.phone}\nEmail: ${builder.email}\nLinkedIn: ${builder.linkedin}\nDegree: ${builder.degree}\nUniversity: ${builder.university}\nGraduation Year: ${builder.graduationYear}\nCountry: ${builder.educationCountry}\nExperience: ${builder.experiences.map(e=>`${e.jobTitle} at ${e.company} (${e.startDate}-${e.endDate}): ${e.responsibilities} | Achievements: ${e.achievements}`).join(' | ')}\nSoft Skills: ${builder.softSkills}\nTechnical Skills: ${builder.technicalSkills}\nInternships: ${builder.internships}\nCourses: ${builder.courses}\nLanguages: ${builder.languages}\nLicenses: ${builder.licenses}\nAdditional: ${builder.additionalInfo}`;
+      const aiText = await callAI({ service:'builder', builderData });
+      const parsed = parseAICV(aiText);
       const cv = {
-        name: p.name || builder.name || 'NAME',
-        address: builder.address || 'Not provided',
-        phone: p.phone || builder.phone || 'Not provided',
-        email: p.email || builder.email || 'Not provided',
-        linkedin: p.linkedin || builder.linkedin || 'Not provided',
-        summary: p.summary || `Motivated ${builder.targetJob} professional.`,
-        experience: p.experience || formatExperience(),
-        education: p.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
-        softSkills: p.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
-        technicalSkills: p.technicalSkills || builder.technicalSkills || 'Not provided',
-        internshipCourses: p.internshipCourses || `${builder.internships} ${builder.courses}`,
-        additionalInfo: p.additionalInfo || builder.additionalInfo || '',
-        language: p.language || builder.languages || 'Not provided',
-        license: p.license || builder.licenses || 'Not provided',
+        name: builder.name||'NAME', address: builder.address||'Not provided',
+        phone: builder.phone||'Not provided', email: builder.email||'Not provided',
+        linkedin: builder.linkedin||'Not provided',
+        summary: parsed.summary || `Motivated ${builder.targetJob} professional with experience in ${builder.technicalSkills}.`,
+        experience: parsed.experience || formatExperience(),
+        education: parsed.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
+        softSkills: parsed.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
+        technicalSkills: parsed.technicalSkills || builder.technicalSkills || 'Not provided',
+        internshipCourses: parsed.internshipCourses || `${builder.internships} ${builder.courses}`,
+        additionalInfo: parsed.additionalInfo || builder.additionalInfo || '',
+        language: parsed.language || builder.languages || 'Not provided',
+        license: parsed.license || builder.licenses || 'Not provided',
       };
       setBuiltCV(cv);
       setRemainingOutputs(Math.max(0,3-increaseUsageCount('builder')));
     } catch(e: any) {
       alert(e.message || 'AI generation failed. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
+    } finally { setIsGenerating(false); }
   }
 
   return (
@@ -1061,7 +774,6 @@ Additional: ${builder.additionalInfo}
         <input placeholder="Target Job Title" value={builder.targetJob} onChange={e=>updateBuilder('targetJob',e.target.value)}/>
         <textarea placeholder="Optional: Paste Job Description" value={builder.jobDescription} onChange={e=>updateBuilder('jobDescription',e.target.value)}/>
       </div>}
-
       {step===2&&<div className="wizard-card"><h3>Personal Information</h3><div className="form">
         <input placeholder="Full Name" value={builder.name} onChange={e=>updateBuilder('name',e.target.value)}/>
         <input placeholder="Address / City" value={builder.address} onChange={e=>updateBuilder('address',e.target.value)}/>
@@ -1069,14 +781,12 @@ Additional: ${builder.additionalInfo}
         <input placeholder="Email" value={builder.email} onChange={e=>updateBuilder('email',e.target.value)}/>
         <input placeholder="LinkedIn" value={builder.linkedin} onChange={e=>updateBuilder('linkedin',e.target.value)}/>
       </div></div>}
-
       {step===3&&<div className="wizard-card"><h3>Education</h3><div className="form">
         <input placeholder="Degree" value={builder.degree} onChange={e=>updateBuilder('degree',e.target.value)}/>
         <input placeholder="University" value={builder.university} onChange={e=>updateBuilder('university',e.target.value)}/>
         <input placeholder="Graduation Year" value={builder.graduationYear} onChange={e=>updateBuilder('graduationYear',e.target.value)}/>
         <input placeholder="Country" value={builder.educationCountry} onChange={e=>updateBuilder('educationCountry',e.target.value)}/>
       </div></div>}
-
       {step===4&&<div className="wizard-card"><h3>Professional Experience</h3>
         {builder.experiences.map((exp,index)=>(
           <div className="experience-card" key={index}>
@@ -1095,17 +805,14 @@ Additional: ${builder.additionalInfo}
         ))}
         <button className="secondary" onClick={addExperience}>+ Add Another Experience</button>
       </div>}
-
       {step===5&&<div className="wizard-card"><h3>Skills</h3>
         <textarea placeholder="Soft Skills" value={builder.softSkills} onChange={e=>updateBuilder('softSkills',e.target.value)}/>
         <textarea placeholder="Technical Skills" value={builder.technicalSkills} onChange={e=>updateBuilder('technicalSkills',e.target.value)}/>
       </div>}
-
       {step===6&&<div className="wizard-card"><h3>Internship and Courses</h3>
         <textarea placeholder="Internships" value={builder.internships} onChange={e=>updateBuilder('internships',e.target.value)}/>
         <textarea placeholder="Courses / Training" value={builder.courses} onChange={e=>updateBuilder('courses',e.target.value)}/>
       </div>}
-
       {step===7&&<div className="wizard-card"><h3>Languages, Licenses and Additional Info</h3>
         <textarea placeholder="Languages" value={builder.languages} onChange={e=>updateBuilder('languages',e.target.value)}/>
         <textarea placeholder="Licenses" value={builder.licenses} onChange={e=>updateBuilder('licenses',e.target.value)}/>
@@ -1117,23 +824,25 @@ Additional: ${builder.additionalInfo}
         {step<totalSteps&&<button onClick={()=>setStep(step+1)}>Next</button>}
         {step===totalSteps&&<>
           {paymentConfirmed ? (
-              <>
-                <button onClick={generatePaidBuilderCV} disabled={isGenerating}>{isGenerating ? '⏳ AI is building your CV...' : 'Generate Paid CV Output'}</button>
-                <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
-              </>
-            ) : (
-              <button onClick={async () => {
-                setIsPaying(true);
-                try {
-                  await startCheckout('builder', { builder: JSON.stringify(builder) });
-                } catch {
-                  setIsPaying(false);
-                  alert('Payment connection took too long. Please try again.');
-                }
-              }} disabled={isPaying}>
-                {isPaying ? 'Redirecting to payment...' : `Unlock Resume Package — ${PRICES.builder}`}
-              </button>
-            )}
+            <>
+              <button onClick={generatePaidBuilderCV} disabled={isGenerating}>{isGenerating ? '⏳ AI is building your CV...' : 'Generate Paid CV Output'}</button>
+              <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
+            </>
+          ) : showBuilderPayment ? (
+            <StripeWrapper
+              service="builder"
+              onSuccess={() => {
+                setShowBuilderPayment(false);
+                setPaymentConfirmed(true);
+                setRemainingOutputs(3);
+              }}
+              onCancel={() => setShowBuilderPayment(false)}
+            />
+          ) : (
+            <button onClick={() => setShowBuilderPayment(true)}>
+              Unlock Resume Package — {PRICES.builder}
+            </button>
+          )}
         </>}
       </div>
 
@@ -1170,14 +879,12 @@ function LinkedInPage() {
   const [targetRole, setTargetRole] = useState('');
   const [experience, setExperience] = useState('');
   const [headline, setHeadline] = useState('');
-  const [isPaying, setIsPaying] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [fullLinkedInOutput, setFullLinkedInOutput] = useState(null);
   const [isGeneratingLinkedIn, setIsGeneratingLinkedIn] = useState(false);
   const [showLinkedInPayment, setShowLinkedInPayment] = useState(false);
 
   useEffect(()=>{
-    setIsPaying(false);
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
     const saved = sessionStorage.getItem('resuvanta_pending_linkedin');
@@ -1194,28 +901,20 @@ function LinkedInPage() {
   function generateHeadlinePreview() {
     setHeadline(`${targetRole||'Target Role'} | ${experience||'relevant experience'} | Open to New Opportunities`);
   }
-  async function handleLinkedInPayment() {
-    if (!targetRole.trim()||!experience.trim()) { alert('Please enter target role and experience first.'); return; }
-    setIsPaying(true);
-    try { await startCheckout('linkedin',{targetRole,experience}); }
-    catch { setIsPaying(false); alert('Payment connection took too long. Please try again.'); }
-  }
   async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
-      const { parsed: aiParsed } = await callAI({ service:'linkedin', targetRole, experience });
-      const p = aiParsed || {};
+      const aiText = await callAI({ service:'linkedin', targetRole, experience });
+      const parsed = parseLinkedInOutput(aiText);
       setFullLinkedInOutput({
-        headline: p.headline || `${targetRole} | ${experience} | Open to New Opportunities`,
-        about: p.about || `Results-focused ${targetRole} with ${experience}.`,
-        skills: p.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
-        recruiterKeywords: p.recruiterKeywords || `${targetRole}, ${experience}`,
+        headline: parsed.headline || `${targetRole} | ${experience} | Open to New Opportunities`,
+        about: parsed.about || `Results-focused ${targetRole} with ${experience}.`,
+        skills: parsed.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
+        recruiterKeywords: parsed.recruiterKeywords || `${targetRole}, ${experience}`,
       });
     } catch(e: any) {
-      alert((e as Error).message || 'AI generation failed. Please try again.');
-    } finally {
-      setIsGeneratingLinkedIn(false);
-    }
+      alert(e.message || 'AI generation failed. Please try again.');
+    } finally { setIsGeneratingLinkedIn(false); }
   }
 
   return (
@@ -1237,26 +936,29 @@ function LinkedInPage() {
           <h3>Unlock LinkedIn Optimization — {PRICES.linkedin}</h3>
           <p>Get your professional headline, About section, experience wording, skills list, and recruiter search keywords.</p>
           {paymentConfirmed ? (
-              <button onClick={generateFullLinkedInOptimization} disabled={isGeneratingLinkedIn}>
-                {isGeneratingLinkedIn ? '⏳ AI is optimizing your profile...' : 'Generate Full LinkedIn Optimization'}
-              </button>
-            ) : (
-              <button onClick={async () => {
-                if (!targetRole.trim() || !experience.trim()) {
-                  alert('Please enter target role and experience first.');
-                  return;
-                }
-                setIsPaying(true);
-                try {
-                  await startCheckout('linkedin', { targetRole, experience });
-                } catch {
-                  setIsPaying(false);
-                  alert('Payment connection took too long. Please try again.');
-                }
-              }} disabled={isPaying}>
-                {isPaying ? 'Redirecting to payment...' : `Optimize My LinkedIn — ${PRICES.linkedin}`}
-              </button>
-            )}
+            <button onClick={generateFullLinkedInOptimization} disabled={isGeneratingLinkedIn}>
+              {isGeneratingLinkedIn ? '⏳ AI is optimizing your profile...' : 'Generate Full LinkedIn Optimization'}
+            </button>
+          ) : showLinkedInPayment ? (
+            <StripeWrapper
+              service="linkedin"
+              onSuccess={() => {
+                setShowLinkedInPayment(false);
+                setPaymentConfirmed(true);
+              }}
+              onCancel={() => setShowLinkedInPayment(false)}
+            />
+          ) : (
+            <button onClick={() => {
+              if (!targetRole.trim() || !experience.trim()) {
+                alert('Please enter target role and experience first.');
+                return;
+              }
+              setShowLinkedInPayment(true);
+            }}>
+              Optimize My LinkedIn — {PRICES.linkedin}
+            </button>
+          )}
         </div>
       </div>}
       {fullLinkedInOutput&&<div className="paid-output">
@@ -1364,9 +1066,7 @@ export default function App() {
           </button>
         </div>
       </header>
-
       {renderPage()}
-
       <footer>
         <p>ResuVanta provides automated CV optimization support only. It does not guarantee interviews, job offers, or hiring decisions.</p>
       </footer>
