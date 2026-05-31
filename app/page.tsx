@@ -479,27 +479,27 @@ function OptimizationPage() {
     setResult(analyzeResume(resume, jobDescription));
   }
 
-  async function generatePaidOptimizationCV() {
+async function generatePaidOptimizationCV() {
     if (!resume.trim()||!jobDescription.trim()) { setError('Please upload CV and paste job description first.'); return; }
     const used = getUsageCount('optimization');
     if (used>=3) { setError('You have used all 3 CV outputs for this payment session.'); return; }
     setLoading(true); setError('');
     try {
-      const aiText = await callAI({ service:'optimization', resume, jobDescription });
-      const parsed = parseAICV(aiText);
+      const { parsed: aiParsed } = await callAI({ service:'optimization', resume, jobDescription });
+      const p = aiParsed || {};
       const analysis = analyzeResume(resume, jobDescription);
       const cv = {
         name: guessName(resume)||'NAME', address:'Not provided',
         phone: guessPhone(resume), email: guessEmail(resume), linkedin: guessLinkedIn(resume),
-        summary: parsed.summary || aiText.slice(0,300),
-        experience: parsed.experience || 'Please add your experience here.',
-        education: parsed.education || guessEducation(resume),
-        softSkills: parsed.softSkills || 'Communication, teamwork, problem solving, time management',
-        technicalSkills: parsed.technicalSkills || analysis.found.join(', '),
-        internshipCourses: parsed.internshipCourses || 'Not provided',
-        additionalInfo: parsed.additionalInfo || '',
-        language: parsed.language || guessLanguage(resume),
-        license: parsed.license || guessLicense(resume),
+        summary: p.summary || 'Please add your summary here.',
+        experience: p.experience || 'Please add your experience here.',
+        education: p.education || guessEducation(resume),
+        softSkills: p.softSkills || 'Communication, teamwork, problem solving, time management',
+        technicalSkills: p.technicalSkills || analysis.found.join(', '),
+        internshipCourses: p.internshipCourses || 'Not provided',
+        additionalInfo: p.additionalInfo || '',
+        language: p.language || guessLanguage(resume),
+        license: p.license || guessLicense(resume),
       };
       const newCount = increaseUsageCount('optimization');
       const remaining = Math.max(0,3-newCount);
@@ -748,26 +748,26 @@ function BuilderWizard() {
       return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
-  async function generatePaidBuilderCV() {
+async function generatePaidBuilderCV() {
     if (getUsageCount('builder')>=3) { alert('You have used all 3 CV outputs for this payment session.'); return; }
     setIsGenerating(true);
     try {
       const builderData = `Target Job: ${builder.targetJob}\nJob Description: ${builder.jobDescription}\nName: ${builder.name}\nAddress: ${builder.address}\nPhone: ${builder.phone}\nEmail: ${builder.email}\nLinkedIn: ${builder.linkedin}\nDegree: ${builder.degree}\nUniversity: ${builder.university}\nGraduation Year: ${builder.graduationYear}\nCountry: ${builder.educationCountry}\nExperience: ${builder.experiences.map(e=>`${e.jobTitle} at ${e.company} (${e.startDate}-${e.endDate}): ${e.responsibilities} | Achievements: ${e.achievements}`).join(' | ')}\nSoft Skills: ${builder.softSkills}\nTechnical Skills: ${builder.technicalSkills}\nInternships: ${builder.internships}\nCourses: ${builder.courses}\nLanguages: ${builder.languages}\nLicenses: ${builder.licenses}\nAdditional: ${builder.additionalInfo}`;
-      const aiText = await callAI({ service:'builder', builderData });
-      const parsed = parseAICV(aiText);
+      const { parsed: aiParsed } = await callAI({ service:'builder', builderData });
+      const p = aiParsed || {};
       const cv = {
         name: builder.name||'NAME', address: builder.address||'Not provided',
         phone: builder.phone||'Not provided', email: builder.email||'Not provided',
         linkedin: builder.linkedin||'Not provided',
-        summary: parsed.summary || `Motivated ${builder.targetJob} professional with experience in ${builder.technicalSkills}.`,
-        experience: parsed.experience || formatExperience(),
-        education: parsed.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
-        softSkills: parsed.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
-        technicalSkills: parsed.technicalSkills || builder.technicalSkills || 'Not provided',
-        internshipCourses: parsed.internshipCourses || `${builder.internships} ${builder.courses}`,
-        additionalInfo: parsed.additionalInfo || builder.additionalInfo || '',
-        language: parsed.language || builder.languages || 'Not provided',
-        license: parsed.license || builder.licenses || 'Not provided',
+        summary: p.summary || `Motivated ${builder.targetJob} professional with experience in ${builder.technicalSkills}.`,
+        experience: p.experience || formatExperience(),
+        education: p.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
+        softSkills: p.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
+        technicalSkills: p.technicalSkills || builder.technicalSkills || 'Not provided',
+        internshipCourses: p.internshipCourses || `${builder.internships} ${builder.courses}`,
+        additionalInfo: p.additionalInfo || builder.additionalInfo || '',
+        language: p.language || builder.languages || 'Not provided',
+        license: p.license || builder.licenses || 'Not provided',
       };
       setBuiltCV(cv);
       setRemainingOutputs(Math.max(0,3-increaseUsageCount('builder')));
@@ -917,16 +917,16 @@ function LinkedInPage() {
   function generateHeadlinePreview() {
     setHeadline(`${targetRole||'Target Role'} | ${experience||'relevant experience'} | Open to New Opportunities`);
   }
-  async function generateFullLinkedInOptimization() {
+async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
-      const aiText = await callAI({ service:'linkedin', targetRole, experience });
-      const parsed = parseLinkedInOutput(aiText);
+      const { parsed: aiParsed } = await callAI({ service:'linkedin', targetRole, experience });
+      const p = aiParsed || {};
       setFullLinkedInOutput({
-        headline: parsed.headline || `${targetRole} | ${experience} | Open to New Opportunities`,
-        about: parsed.about || `Results-focused ${targetRole} with ${experience}.`,
-        skills: parsed.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
-        recruiterKeywords: parsed.recruiterKeywords || `${targetRole}, ${experience}`,
+        headline: p.headline || `${targetRole} | ${experience} | Open to New Opportunities`,
+        about: p.about || `Results-focused ${targetRole} with ${experience}.`,
+        skills: p.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
+        recruiterKeywords: p.recruiterKeywords || `${targetRole}, ${experience}`,
       });
     } catch(e: any) {
       alert(e.message || 'AI generation failed. Please try again.');
