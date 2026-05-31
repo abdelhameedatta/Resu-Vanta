@@ -170,12 +170,15 @@ function sectionFromResume(resume, sectionNames) {
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 function openPDFWindow(cv, title='Optimized CV') {
   const html = `<html><head><title>${escapeHTML(title)}</title>
-    <style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.45;padding:36px}
-    h1{text-align:center;font-size:26px;margin:0 0 8px;letter-spacing:1px}
-    .contact{text-align:center;font-size:12px;margin-bottom:20px}
-    h2{font-size:14px;border-bottom:1px solid #111827;padding-bottom:4px;margin:18px 0 8px;letter-spacing:.5px}
-    p{margin:5px 0;font-size:13px;white-space:pre-wrap}
-    @media print{body{padding:24px}}</style></head>
+    <style>
+    @page { margin: 0; }
+    body { font-family:Arial,Helvetica,sans-serif; color:#111827; line-height:1.55; padding:20mm; }
+    h1 { text-align:center; font-size:26px; margin:0 0 8px; letter-spacing:1px; }
+    .contact { text-align:center; font-size:12px; margin-bottom:20px; }
+    h2 { font-size:14px; border-bottom:1px solid #111827; padding-bottom:4px; margin:18px 0 8px; letter-spacing:.5px; }
+    p { margin:6px 0; font-size:13px; white-space:pre-wrap; text-align:justify; }
+    @media print { body { padding:20mm; } }
+    </style></head>
     <body>
     <h1>${escapeHTML(cv.name)}</h1>
     <div class="contact">ADDRESS: ${escapeHTML(cv.address)} | PHONE: ${escapeHTML(cv.phone)} | E-MAIL: ${escapeHTML(cv.email)} | LinkedIn: ${escapeHTML(cv.linkedin)}</div>
