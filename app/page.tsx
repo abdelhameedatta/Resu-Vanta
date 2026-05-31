@@ -11,8 +11,8 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
-function parseAICV(text) {
-  function extract(label, next) {
+function parseAICV(text: string) {
+  function extract(label: string, next: string[]) {
     const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
@@ -31,8 +31,8 @@ function parseAICV(text) {
   };
 }
 
-function parseLinkedInOutput(text) {
-  function extract(label, next) {
+function parseLinkedInOutput(text: string) {
+  function extract(label: string, next: string[]) {
     const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
@@ -198,8 +198,8 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
-function openPDFWindow(cv, title='Optimized CV') {
-  const parseText = (text) => {
+function openPDFWindow(cv: any, title: string = 'Optimized CV') {
+  const parseText = (text: any) => {
     if (!text) return '';
     let t = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     t = t.replace(/^#+\s*/gm, '');
@@ -233,8 +233,11 @@ function openPDFWindow(cv, title='Optimized CV') {
       window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
     </script>
     </body></html>`;
-  const w = window.open('','_blank');
-  w.document.write(html); w.document.close();
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
 }
 
 // ─── Animated Bar ─────────────────────────────────────────────────────────────
