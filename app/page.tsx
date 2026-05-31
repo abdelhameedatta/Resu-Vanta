@@ -11,7 +11,7 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
-async function callAI(payload) {
+async function callAI(payload: Record<string, string>): Promise<string> {
   const res = await fetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -19,12 +19,32 @@ async function callAI(payload) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return { result: data.result || '', parsed: data.parsed || null };
+  return data.result || '';
 }
 
-function parseLinkedInOutput(text) {
-  function extract(label, next) {
-    const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
+function parseAICV(text: string) {
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(label + '[:\s]*([\s\S]*?)(?=' + next.join('|') + '|$)', 'i');
+    const match = text.match(pattern);
+    return match ? match[1].trim() : '';
+  }
+  const sections = ['SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
+  return {
+    summary: extract('SUMMARY', sections.slice(1)),
+    experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(2)),
+    education: extract('EDUCATION', sections.slice(3)),
+    technicalSkills: extract('TECHNICAL SKILLS', sections.slice(4)),
+    softSkills: extract('SOFT SKILLS', sections.slice(5)),
+    internshipCourses: extract('INTERNSHIP AND COURSES', sections.slice(6)),
+    language: extract('LANGUAGES', sections.slice(7)),
+    license: extract('LICENSES', sections.slice(8)),
+    additionalInfo: extract('ADDITIONAL INFORMATION', []),
+  };
+}
+
+function parseLinkedInOutput(text: string) {
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(label + '[:\s]*([\s\S]*?)(?=' + next.join('|') + '|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
@@ -129,6 +149,27 @@ function analyzeResume(resume, jobDescription) {
     quickImprovement, risks };
 }
 
+// ─── Professional sentences generator ────────────────────────────────────────
+function generateProfessionalSentences(jobDescription, foundKeywords) {
+  const job = cleanText(jobDescription);
+  const sentences = [];
+  if (foundKeywords.length > 0)
+    sentences.push(`Demonstrated expertise in ${foundKeywords.slice(0,3).join(', ')} with a proven track record of delivering results.`);
+  if (/manag|lead|supervis/.test(job))
+    sentences.push('Successfully managed cross-functional teams and coordinated multiple projects simultaneously to meet deadlines.');
+  if (/patient|clinical|pharmacy|medical/.test(job))
+    sentences.push('Provided comprehensive patient care and counseling, ensuring medication safety and regulatory compliance.');
+  if (/data|analytic|report/.test(job))
+    sentences.push('Leveraged data analysis and reporting tools to drive informed decision-making and improve operational efficiency.');
+  if (/customer|client|service/.test(job))
+    sentences.push('Built strong client relationships through excellent communication and a commitment to customer satisfaction.');
+  if (/develop|software|tech/.test(job))
+    sentences.push('Delivered scalable software solutions using industry best practices and agile methodologies.');
+  if (sentences.length < 3)
+    sentences.push('Consistently exceeded performance targets while maintaining high standards of quality and professionalism.');
+  return sentences.slice(0, 4);
+}
+
 // ─── CV helpers ───────────────────────────────────────────────────────────────
 function guessName(resume) {
   const lines = resume.split('\n').map(l=>l.trim()).filter(Boolean);
@@ -168,6 +209,7 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
+// ─── PDF ──────────────────────────────────────────────────────────────────────
 function openPDFWindow(cv, title='Optimized CV') {
   const parseText = (text) => {
     if (!text) return '';
@@ -177,8 +219,9 @@ function openPDFWindow(cv, title='Optimized CV') {
     t = t.replace(/\*(.*?)\*/g, '<i>$1</i>');
     return t;
   };
+
   const html = `<!DOCTYPE html>
-  <html><head><title>${'${parseText(title)}'}</title>
+  <html><head><title>${parseText(title)}</title>
     <style>
     @page { size: auto; margin: 0mm; }
     body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.6; margin: 0; padding: 20mm; }
@@ -188,20 +231,20 @@ function openPDFWindow(cv, title='Optimized CV') {
     p { margin: 6px 0; font-size: 13px; white-space: pre-wrap; text-align: justify; }
     </style></head>
     <body>
-    <h1>${'${parseText(cv.name)}'}</h1>
-    <div class="contact">ADDRESS: ${'${parseText(cv.address)}'} | PHONE: ${'${parseText(cv.phone)}'} | E-MAIL: ${'${parseText(cv.email)}'} | LinkedIn: ${'${parseText(cv.linkedin)}'}</div>
-    <h2>SUMMARY</h2><p>${'${parseText(cv.summary)}'}</p>
-    <h2>PROFESSIONAL EXPERIENCE</h2><p>${'${parseText(cv.experience)}'}</p>
-    <h2>EDUCATION</h2><p>${'${parseText(cv.education)}'}</p>
-    <h2>SKILLS</h2><p><b>Soft Skills:</b> ${'${parseText(cv.softSkills)}'}</p><p><b>Technical Skills:</b> ${'${parseText(cv.technicalSkills)}'}</p>
-    <h2>INTERNSHIP AND COURSES</h2><p>${'${parseText(cv.internshipCourses)}'}</p>
-    <h2>ADDITIONAL INFORMATION</h2><p>${'${parseText(cv.additionalInfo)}'}</p>
-    <h2>LANGUAGE</h2><p>${'${parseText(cv.language)}'}</p>
-    <h2>LICENSE</h2><p>${'${parseText(cv.license)}'}</p>
+    <h1>${parseText(cv.name)}</h1>
+    <div class="contact">ADDRESS: ${parseText(cv.address)} | PHONE: ${parseText(cv.phone)} | E-MAIL: ${parseText(cv.email)} | LinkedIn: ${parseText(cv.linkedin)}</div>
+    <h2>SUMMARY</h2><p>${parseText(cv.summary)}</p>
+    <h2>PROFESSIONAL EXPERIENCE</h2><p>${parseText(cv.experience)}</p>
+    <h2>EDUCATION</h2><p>${parseText(cv.education)}</p>
+    <h2>SKILLS</h2><p><b>Soft Skills:</b> ${parseText(cv.softSkills)}</p><p><b>Technical Skills:</b> ${parseText(cv.technicalSkills)}</p>
+    <h2>INTERNSHIP AND COURSES</h2><p>${parseText(cv.internshipCourses)}</p>
+    <h2>ADDITIONAL INFORMATION</h2><p>${parseText(cv.additionalInfo)}</p>
+    <h2>LANGUAGE</h2><p>${parseText(cv.language)}</p>
+    <h2>LICENSE</h2><p>${parseText(cv.license)}</p>
     <script>
       window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
-    <\/script>
-    </body></html>\`;
+    </script>
+    </body></html>`;
   const w = window.open('','_blank');
   w.document.write(html); w.document.close();
 }
@@ -442,31 +485,28 @@ function OptimizationPage() {
     if (used>=3) { setError('You have used all 3 CV outputs for this payment session.'); return; }
     setLoading(true); setError('');
     try {
-      const { parsed: aiParsed } = await callAI({ service:'optimization', resume, jobDescription });
-      const p = aiParsed || {};
+      const aiText = await callAI({ service:'optimization', resume, jobDescription });
+      const parsed = parseAICV(aiText);
       const analysis = analyzeResume(resume, jobDescription);
       const cv = {
-        name: p.name || guessName(resume) || 'NAME',
-        address: 'Not provided',
-        phone: p.phone || guessPhone(resume),
-        email: p.email || guessEmail(resume),
-        linkedin: p.linkedin || guessLinkedIn(resume),
-        summary: p.summary || 'Please add your summary here.',
-        experience: p.experience || 'Please add your experience here.',
-        education: p.education || guessEducation(resume),
-        softSkills: p.softSkills || 'Communication, teamwork, problem solving, time management',
-        technicalSkills: p.technicalSkills || analysis.found.join(', '),
-        internshipCourses: p.internshipCourses || 'Not provided',
-        additionalInfo: p.additionalInfo || '',
-        language: p.language || guessLanguage(resume),
-        license: p.license || guessLicense(resume),
+        name: guessName(resume)||'NAME', address:'Not provided',
+        phone: guessPhone(resume), email: guessEmail(resume), linkedin: guessLinkedIn(resume),
+        summary: parsed.summary || aiText.slice(0,300),
+        experience: parsed.experience || 'Please add your experience here.',
+        education: parsed.education || guessEducation(resume),
+        softSkills: parsed.softSkills || 'Communication, teamwork, problem solving, time management',
+        technicalSkills: parsed.technicalSkills || analysis.found.join(', '),
+        internshipCourses: parsed.internshipCourses || 'Not provided',
+        additionalInfo: parsed.additionalInfo || '',
+        language: parsed.language || guessLanguage(resume),
+        license: parsed.license || guessLicense(resume),
       };
       const newCount = increaseUsageCount('optimization');
       const remaining = Math.max(0,3-newCount);
       setResult(analysis); setPaidCV(cv); setProfSentences([]); setError('');
       setRemainingOutputs(remaining);
       setMessage(`CV generated successfully. You have ${remaining} CV output(s) remaining.`);
-    } catch(e) {
+    } catch(e: any) {
       setError(e.message || 'AI generation failed. Please try again.');
     } finally { setLoading(false); }
   }
@@ -607,14 +647,17 @@ function OptimizationPage() {
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Summary</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Write 3–5 sentences about your background, skills, and career goal.</p>
             <textarea style={{minHeight:120}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Experience</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements.</p>
             <textarea style={{minHeight:160}} value={paidCV.experience} onChange={e=>updatePaidCVField('experience',e.target.value)} placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients'}/>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Education</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Include your degree, university, graduation year, and country.</p>
             <textarea style={{minHeight:80}} value={paidCV.education} onChange={e=>updatePaidCVField('education',e.target.value)} placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}/>
           </div>
           <div style={{marginBottom:20}}>
@@ -705,31 +748,30 @@ function BuilderWizard() {
       return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
-
   async function generatePaidBuilderCV() {
     if (getUsageCount('builder')>=3) { alert('You have used all 3 CV outputs for this payment session.'); return; }
     setIsGenerating(true);
     try {
       const builderData = `Target Job: ${builder.targetJob}\nJob Description: ${builder.jobDescription}\nName: ${builder.name}\nAddress: ${builder.address}\nPhone: ${builder.phone}\nEmail: ${builder.email}\nLinkedIn: ${builder.linkedin}\nDegree: ${builder.degree}\nUniversity: ${builder.university}\nGraduation Year: ${builder.graduationYear}\nCountry: ${builder.educationCountry}\nExperience: ${builder.experiences.map(e=>`${e.jobTitle} at ${e.company} (${e.startDate}-${e.endDate}): ${e.responsibilities} | Achievements: ${e.achievements}`).join(' | ')}\nSoft Skills: ${builder.softSkills}\nTechnical Skills: ${builder.technicalSkills}\nInternships: ${builder.internships}\nCourses: ${builder.courses}\nLanguages: ${builder.languages}\nLicenses: ${builder.licenses}\nAdditional: ${builder.additionalInfo}`;
-      const { parsed: aiParsed } = await callAI({ service:'builder', builderData });
-      const p = aiParsed || {};
+      const aiText = await callAI({ service:'builder', builderData });
+      const parsed = parseAICV(aiText);
       const cv = {
         name: builder.name||'NAME', address: builder.address||'Not provided',
         phone: builder.phone||'Not provided', email: builder.email||'Not provided',
         linkedin: builder.linkedin||'Not provided',
-        summary: p.summary || `Motivated ${builder.targetJob} professional with experience in ${builder.technicalSkills}.`,
-        experience: p.experience || formatExperience(),
-        education: p.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
-        softSkills: p.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
-        technicalSkills: p.technicalSkills || builder.technicalSkills || 'Not provided',
-        internshipCourses: p.internshipCourses || `${builder.internships} ${builder.courses}`,
-        additionalInfo: p.additionalInfo || builder.additionalInfo || '',
-        language: p.language || builder.languages || 'Not provided',
-        license: p.license || builder.licenses || 'Not provided',
+        summary: parsed.summary || `Motivated ${builder.targetJob} professional with experience in ${builder.technicalSkills}.`,
+        experience: parsed.experience || formatExperience(),
+        education: parsed.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
+        softSkills: parsed.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
+        technicalSkills: parsed.technicalSkills || builder.technicalSkills || 'Not provided',
+        internshipCourses: parsed.internshipCourses || `${builder.internships} ${builder.courses}`,
+        additionalInfo: parsed.additionalInfo || builder.additionalInfo || '',
+        language: parsed.language || builder.languages || 'Not provided',
+        license: parsed.license || builder.licenses || 'Not provided',
       };
       setBuiltCV(cv);
       setRemainingOutputs(Math.max(0,3-increaseUsageCount('builder')));
-    } catch(e) {
+    } catch(e: any) {
       alert(e.message || 'AI generation failed. Please try again.');
     } finally { setIsGenerating(false); }
   }
@@ -875,19 +917,18 @@ function LinkedInPage() {
   function generateHeadlinePreview() {
     setHeadline(`${targetRole||'Target Role'} | ${experience||'relevant experience'} | Open to New Opportunities`);
   }
-
   async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
-      const { parsed: aiParsed } = await callAI({ service:'linkedin', targetRole, experience });
-      const p = aiParsed || {};
+      const aiText = await callAI({ service:'linkedin', targetRole, experience });
+      const parsed = parseLinkedInOutput(aiText);
       setFullLinkedInOutput({
-        headline: p.headline || `${targetRole} | ${experience} | Open to New Opportunities`,
-        about: p.about || `Results-focused ${targetRole} with ${experience}.`,
-        skills: p.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
-        recruiterKeywords: p.recruiterKeywords || `${targetRole}, ${experience}`,
+        headline: parsed.headline || `${targetRole} | ${experience} | Open to New Opportunities`,
+        about: parsed.about || `Results-focused ${targetRole} with ${experience}.`,
+        skills: parsed.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
+        recruiterKeywords: parsed.recruiterKeywords || `${targetRole}, ${experience}`,
       });
-    } catch(e) {
+    } catch(e: any) {
       alert(e.message || 'AI generation failed. Please try again.');
     } finally { setIsGeneratingLinkedIn(false); }
   }
