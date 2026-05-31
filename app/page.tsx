@@ -11,7 +11,7 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
-async function callAI(payload) {
+async function callAI(payload: any): Promise<any> {
   const res = await fetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -19,21 +19,7 @@ async function callAI(payload) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return { result: data.result || '', parsed: data.parsed || null };
-}
-
-function parseLinkedInOutput(text) {
-  function extract(label, next) {
-    const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
-    const match = text.match(pattern);
-    return match ? match[1].trim() : '';
-  }
-  return {
-    headline: extract('HEADLINE', ['ABOUT','SKILLS','RECRUITER']),
-    about: extract('ABOUT', ['SKILLS','RECRUITER']),
-    skills: extract('SKILLS', ['RECRUITER']),
-    recruiterKeywords: extract('RECRUITER KEYWORDS', []),
-  };
+  return data;
 }
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
@@ -129,6 +115,27 @@ function analyzeResume(resume, jobDescription) {
     quickImprovement, risks };
 }
 
+// ─── Professional sentences generator ────────────────────────────────────────
+function generateProfessionalSentences(jobDescription, foundKeywords) {
+  const job = cleanText(jobDescription);
+  const sentences = [];
+  if (foundKeywords.length > 0)
+    sentences.push(`Demonstrated expertise in ${foundKeywords.slice(0,3).join(', ')} with a proven track record of delivering results.`);
+  if (/manag|lead|supervis/.test(job))
+    sentences.push('Successfully managed cross-functional teams and coordinated multiple projects simultaneously to meet deadlines.');
+  if (/patient|clinical|pharmacy|medical/.test(job))
+    sentences.push('Provided comprehensive patient care and counseling, ensuring medication safety and regulatory compliance.');
+  if (/data|analytic|report/.test(job))
+    sentences.push('Leveraged data analysis and reporting tools to drive informed decision-making and improve operational efficiency.');
+  if (/customer|client|service/.test(job))
+    sentences.push('Built strong client relationships through excellent communication and a commitment to customer satisfaction.');
+  if (/develop|software|tech/.test(job))
+    sentences.push('Delivered scalable software solutions using industry best practices and agile methodologies.');
+  if (sentences.length < 3)
+    sentences.push('Consistently exceeded performance targets while maintaining high standards of quality and professionalism.');
+  return sentences.slice(0, 4);
+}
+
 // ─── CV helpers ───────────────────────────────────────────────────────────────
 function guessName(resume) {
   const lines = resume.split('\n').map(l=>l.trim()).filter(Boolean);
@@ -213,7 +220,6 @@ function AnimatedBar({ label, value, color, delay = 0 }) {
     }, delay);
     return () => clearTimeout(timer);
   }, [value, delay]);
-
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
@@ -395,7 +401,8 @@ function OptimizationPage() {
     const file = event.target.files?.[0];
     if (!file) return;
     const fileName = file.name.toLowerCase();
-    setMessage('Reading file...'); setError('');
+    setMessage('Reading file...');
+    setError('');
     try {
       if (fileName.endsWith('.txt')) { setResume(await file.text()); setMessage('TXT file loaded successfully.'); return; }
       if (fileName.endsWith('.pdf')) {
@@ -435,11 +442,8 @@ function OptimizationPage() {
       const p = aiParsed || {};
       const analysis = analyzeResume(resume, jobDescription);
       const cv = {
-        name: p.name || guessName(resume) || 'NAME',
-        address: 'Not provided',
-        phone: p.phone || guessPhone(resume),
-        email: p.email || guessEmail(resume),
-        linkedin: p.linkedin || guessLinkedIn(resume),
+        name: guessName(resume)||'NAME', address:'Not provided',
+        phone: guessPhone(resume), email: guessEmail(resume), linkedin: guessLinkedIn(resume),
         summary: p.summary || 'Please add your summary here.',
         experience: p.experience || 'Please add your experience here.',
         education: p.education || guessEducation(resume),
@@ -455,7 +459,7 @@ function OptimizationPage() {
       setResult(analysis); setPaidCV(cv); setProfSentences([]); setError('');
       setRemainingOutputs(remaining);
       setMessage(`CV generated successfully. You have ${remaining} CV output(s) remaining.`);
-    } catch(e) {
+    } catch(e: any) {
       setError(e.message || 'AI generation failed. Please try again.');
     } finally { setLoading(false); }
   }
@@ -596,14 +600,17 @@ function OptimizationPage() {
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Summary</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Write 3–5 sentences about your background, skills, and career goal.</p>
             <textarea style={{minHeight:120}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Experience</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements.</p>
             <textarea style={{minHeight:160}} value={paidCV.experience} onChange={e=>updatePaidCVField('experience',e.target.value)} placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients'}/>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Education</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Include your degree, university, graduation year, and country.</p>
             <textarea style={{minHeight:80}} value={paidCV.education} onChange={e=>updatePaidCVField('education',e.target.value)} placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}/>
           </div>
           <div style={{marginBottom:20}}>
@@ -640,7 +647,8 @@ function OptimizationPage() {
             openPDFWindow(paidCV,'Optimized CV');
             clearServiceSession('optimization');
             setPaymentConfirmed(false); setRemainingOutputs(3);
-            setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
+            setResume(''); setJobDescription(''); setResult(null); 
+            setPaidCV(null); setProfSentences([]);
             setMessage('PDF downloaded. Temporary session data has been cleared.');
           }}>Download PDF</button>
         </div>
@@ -694,7 +702,7 @@ function BuilderWizard() {
       return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
-
+  
   async function generatePaidBuilderCV() {
     if (getUsageCount('builder')>=3) { alert('You have used all 3 CV outputs for this payment session.'); return; }
     setIsGenerating(true);
@@ -718,7 +726,7 @@ function BuilderWizard() {
       };
       setBuiltCV(cv);
       setRemainingOutputs(Math.max(0,3-increaseUsageCount('builder')));
-    } catch(e) {
+    } catch(e: any) {
       alert(e.message || 'AI generation failed. Please try again.');
     } finally { setIsGenerating(false); }
   }
@@ -860,11 +868,11 @@ function LinkedInPage() {
       } catch {}
     }
   },[]);
-
+  
   function generateHeadlinePreview() {
     setHeadline(`${targetRole||'Target Role'} | ${experience||'relevant experience'} | Open to New Opportunities`);
   }
-
+  
   async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
@@ -876,7 +884,7 @@ function LinkedInPage() {
         skills: p.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
         recruiterKeywords: p.recruiterKeywords || `${targetRole}, ${experience}`,
       });
-    } catch(e) {
+    } catch(e: any) {
       alert(e.message || 'AI generation failed. Please try again.');
     } finally { setIsGeneratingLinkedIn(false); }
   }
