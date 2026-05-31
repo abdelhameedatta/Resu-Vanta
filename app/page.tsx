@@ -11,6 +11,17 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
+async function callAI(payload) {
+  const res = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return { result: data.result || '', parsed: data.parsed || null };
+}
+
 function parseAICV(rawText) {
   if (typeof rawText === 'object' && rawText !== null) {
     return {
