@@ -11,20 +11,9 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
-async function callAI(payload: Record<string, string>): Promise<string> {
-  const res = await fetch('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.result || '';
-}
-
-function parseAICV(text: string) {
-  function extract(label: string, next: string[]) {
-    const pattern = new RegExp(label + '[:\s]*([\s\S]*?)(?=' + next.join('|') + '|$)', 'i');
+function parseAICV(text) {
+  function extract(label, next) {
+    const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
@@ -42,9 +31,9 @@ function parseAICV(text: string) {
   };
 }
 
-function parseLinkedInOutput(text: string) {
-  function extract(label: string, next: string[]) {
-    const pattern = new RegExp(label + '[:\s]*([\s\S]*?)(?=' + next.join('|') + '|$)', 'i');
+function parseLinkedInOutput(text) {
+  function extract(label, next) {
+    const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
@@ -208,7 +197,6 @@ function sectionFromResume(resume, sectionNames) {
   return collected.join('\n').trim();
 }
 
-// ─── PDF ──────────────────────────────────────────────────────────────────────
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 function openPDFWindow(cv, title='Optimized CV') {
   const parseText = (text) => {
