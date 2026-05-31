@@ -11,13 +11,31 @@ const PRICES = {
 };
 
 // ─── AI Call ─────────────────────────────────────────────────────────────────
-function parseAICV(text: string) {
-  function extract(label: string, next: string[]) {
-    const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
+function parseAICV(rawText) {
+  if (typeof rawText === 'object' && rawText !== null) {
+    return {
+      summary: rawText.summary || rawText.SUMMARY || '',
+      experience: rawText.experience || rawText['PROFESSIONAL EXPERIENCE'] || '',
+      education: rawText.education || rawText.EDUCATION || '',
+      technicalSkills: rawText.technicalSkills || rawText['TECHNICAL SKILLS'] || '',
+      softSkills: rawText.softSkills || rawText['SOFT SKILLS'] || '',
+      internshipCourses: rawText.internshipCourses || rawText['INTERNSHIP AND COURSES'] || '',
+      language: rawText.language || rawText.LANGUAGES || '',
+      license: rawText.license || rawText.LICENSES || '',
+      additionalInfo: rawText.additionalInfo || rawText['ADDITIONAL INFORMATION'] || '',
+    };
+  }
+
+  const text = typeof rawText === 'string' ? rawText : String(rawText || '');
+
+  function extract(label, next) {
+    const pattern = new RegExp(label + '[*:#\\s]*([\\s\\S]*?)(?=[*:#\\s]*(?:' + next.join('|') + ')|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
+
   const sections = ['SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
+  
   return {
     summary: extract('SUMMARY', sections.slice(1)),
     experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(2)),
@@ -31,12 +49,24 @@ function parseAICV(text: string) {
   };
 }
 
-function parseLinkedInOutput(text: string) {
-  function extract(label: string, next: string[]) {
-    const pattern = new RegExp(label + '[:\\s]*([\\s\\S]*?)(?=' + next.join('|') + '|$)', 'i');
+function parseLinkedInOutput(rawText) {
+  if (typeof rawText === 'object' && rawText !== null) {
+    return {
+      headline: rawText.headline || rawText.HEADLINE || '',
+      about: rawText.about || rawText.ABOUT || '',
+      skills: rawText.skills || rawText.SKILLS || '',
+      recruiterKeywords: rawText.recruiterKeywords || rawText['RECRUITER KEYWORDS'] || '',
+    };
+  }
+
+  const text = typeof rawText === 'string' ? rawText : String(rawText || '');
+
+  function extract(label, next) {
+    const pattern = new RegExp(label + '[*:#\\s]*([\\s\\S]*?)(?=[*:#\\s]*(?:' + next.join('|') + ')|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
+
   return {
     headline: extract('HEADLINE', ['ABOUT','SKILLS','RECRUITER']),
     about: extract('ABOUT', ['SKILLS','RECRUITER']),
