@@ -141,44 +141,40 @@ function extractKeywords(text, limit = 25) {
 }
 
 // ─── Analysis ─────────────────────────────────────────────────────────────────
-function analyzeResume(resume, jobDescription) {
+function analyzeResume(resume: string, jobDescription: string) {
   const resumeText = cleanText(resume);
   const jobText = cleanText(jobDescription);
+  
   const keywords = extractKeywords(jobText, 25);
   const found = keywords.filter(k => resumeText.includes(k));
   const missing = keywords.filter(k => !resumeText.includes(k));
-  const keywordScore = keywords.length ? found.length / keywords.length : 0;
-  const hasNumbers = /\d|%|increased|reduced|improved|managed|achieved|generated|saved|delivered/.test(resumeText);
-  const hasSkills = /(skills|tools|technologies|competencies)/.test(resumeText);
-  const hasExperience = /(experience|worked|managed|responsible|led|handled)/.test(resumeText);
-  const hasEducation = /(education|degree|bachelor|master|university|college|certification|license)/.test(resumeText);
-  const score = Math.min(100, Math.round(
-    keywordScore * 60 + (hasNumbers?15:0) + (hasSkills?10:0) + (hasExperience?10:0) + (hasEducation?5:0)
-  ));
+  
+  const keywordScoreRaw = keywords.length ? (found.length / keywords.length) * 100 : 0;
+  const keywordMatchPct = Math.round(keywordScoreRaw);
+
   const sentenceCount = (resumeText.match(/[.!?]/g)||[]).length;
   const hasActionVerbs = /(managed|led|developed|achieved|improved|reduced|increased|delivered|designed|coordinated|supervised|trained|implemented)/i.test(resumeText);
   const hasMetrics = /(\d+\s*%|\d+\s*years|\d+\s*team|\d+\s*million|\d+\s*patients|\d+\s*clients)/i.test(resumeText);
-  const professionalScore = Math.min(90, Math.round(
-    (hasActionVerbs?28:0) + (hasMetrics?22:0) + (hasSkills?15:0) +
-    Math.min(sentenceCount * 2, 15) + (hasExperience?10:0)
-  ));
-  const keywordMatchPct = Math.round(keywordScore * 100);
-  const level = score < 50 ? 'Low Match' : score < 75 ? 'Medium Match' : 'High Match';
+  const professionalScore = Math.min(100, Math.round((hasActionVerbs ? 35 : 10) + (hasMetrics ? 35 : 10) + Math.min(sentenceCount * 2, 30)));
+
+  const experienceKeywords = extractKeywords(jobText, 10);
+  const expFound = experienceKeywords.filter(k => resumeText.includes(k));
+  const experienceScore = experienceKeywords.length ? Math.round((expFound.length / experienceKeywords.length) * 100) : 0;
+
+  const hasSkillsSection = /(skills|technologies|tools|competencies)/.test(resumeText);
+  const skillsScore = Math.min(100, Math.round((keywordMatchPct * 0.6) + (hasSkillsSection ? 40 : 10)));
+
+  const score = Math.round((keywordMatchPct + professionalScore + experienceScore + skillsScore) / 4);
+  
+  const level = score < 50 ? 'Low Match' : score <= 80 ? 'Good Match' : 'High Match';
+  
   let quickImprovement = 'Add more job-specific keywords naturally into your Summary, Skills, and Experience sections.';
-  if (!hasNumbers) quickImprovement = 'Add measurable achievements using numbers, percentages, or clear results.';
-  else if (!hasSkills) quickImprovement = 'Add a clear Skills section with the most relevant keywords from the job description.';
-  else if (!hasExperience) quickImprovement = 'Rewrite your experience section with stronger action verbs and role-specific responsibilities.';
+  if (!hasMetrics) quickImprovement = 'Add measurable achievements using numbers, percentages, or clear results.';
+  
   const risks = [];
-  if (/license|certified|certification/.test(jobText) && !/license|certified|certification/.test(resumeText))
-    risks.push('The job may require a license or certification that is not visible in the resume.');
-  if (/degree|bachelor|master/.test(jobText) && !/degree|bachelor|master/.test(resumeText))
-    risks.push('The job may require education details that are not clearly visible.');
-  if (/years|experience/.test(jobText) && !/years|experience|20\d\d/.test(resumeText))
-    risks.push('Required years of experience may not be clearly stated.');
   if (!risks.length) risks.push('No major knockout risk detected from the visible text.');
-  return { score, professionalScore, keywordMatchPct, level, found, missing,
-    previewMissing: missing.slice(0,3), missingCount: missing.length,
-    quickImprovement, risks };
+  
+  return { score, professionalScore, keywordMatchPct, experienceScore, skillsScore, level, found, missing, previewMissing: missing.slice(0,3), missingCount: missing.length, quickImprovement, risks };
 }
 
 // ─── Professional sentences generator ────────────────────────────────────────
