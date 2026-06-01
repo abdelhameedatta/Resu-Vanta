@@ -510,7 +510,7 @@ function OptimizationPage() {
     setResult(analyzeResume(resume, jobDescription));
   }
 
-async function generatePaidOptimizationCV() {
+  async function generatePaidOptimizationCV() {
     if (!resume.trim()||!jobDescription.trim()) { setError('Please upload CV and paste job description first.'); return; }
     const used = getUsageCount('optimization');
     if (used>=3) { setError('You have used all 3 CV outputs for this payment session.'); return; }
@@ -542,12 +542,18 @@ async function generatePaidOptimizationCV() {
       setResult(analysis); setPaidCV(cv); setProfSentences([]); setError('');
       setRemainingOutputs(remaining);
       setMessage(`CV generated successfully. You have ${remaining} CV output(s) remaining.`);
-    } catch(e: any) {
+    } catch(e) {
       setError(e.message || 'AI generation failed. Please try again.');
     } finally { setLoading(false); }
   }
 
   function updatePaidCVField(field, value) { setPaidCV(old=>({...old,[field]:value})); }
+
+  const getScoreColor = (score) => {
+    if (score > 80) return '#10b981';
+    if (score >= 65) return '#facc15';
+    return '#ef4444';
+  };
 
   return (
     <section className="section">
@@ -566,22 +572,45 @@ async function generatePaidOptimizationCV() {
       </div>
 
       {result && (
-        <div className="preview-box" style={{display:'block',padding:22}}>
-          <div style={{display:'flex',alignItems:'center',gap:18,marginBottom:20,flexWrap:'wrap'}}>
-            <div style={{background:'#0f172a',color:'white',borderRadius:14,padding:'12px 22px',display:'flex',flexDirection:'column',alignItems:'center',minWidth:90,flexShrink:0}}>
-              <span style={{fontSize:38,fontWeight:900,lineHeight:1}}>{result.score}</span>
-              <span style={{fontSize:12,color:'#94a3b8',marginTop:4}}>{result.level}</span>
-            </div>
-            <div style={{flex:1,minWidth:220}}>
-              <p style={{fontWeight:700,marginBottom:4}}>Free Preview</p>
-              <p style={{color:'#94a3b8',fontSize:13}}>Your resume has potential, but it is not fully optimized for this job.</p>
+        <div className="preview-box" style={{display:'block',padding:24}}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1', minWidth: '220px' }}>
+              <p style={{ fontWeight: 700, marginBottom: '6px', fontSize: '18px', color: '#f8fafc' }}>CV Evaluation Report</p>
+              <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
+                This is a strict, real-time ATS analysis of your resume. Scores below 65% indicate a weak match that requires significant optimization.
+              </p>
             </div>
           </div>
-          <div style={{background:'#0c1728',borderRadius:12,padding:'14px 16px',marginBottom:18}}>
-            <AnimatedBar label="Keyword match" value={result.keywordMatchPct} color="#2563eb" delay={100} />
-            <AnimatedBar label="Professional sentences" value={result.professionalScore} color="#16a34a" delay={400} />
-            <AnimatedBar label="Overall CV score" value={result.score} color="#d97706" delay={700} />
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', background: '#0f172a', padding: '28px 24px', borderRadius: '16px', border: '1px solid #1e293b', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ flex: '0 0 140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)', borderRadius: '50%', width: '140px', height: '140px', border: `4px solid ${getScoreColor(result.score)}`, boxShadow: `0 0 20px ${getScoreColor(result.score)}30`, margin: '0 auto' }}>
+              <div style={{ fontSize: '42px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>{result.score}</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>Match Score</div>
+            </div>
+
+            <div style={{ flex: '1', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[
+                { label: 'Keyword Match', score: result.keywordMatchPct },
+                { label: 'Professional Sentences', score: result.professionalScore },
+                { label: 'Experience Alignment', score: result.experienceScore },
+                { label: 'Skills Relevance', score: result.skillsScore }
+              ].map((item, idx) => {
+                const color = getScoreColor(item.score);
+                return (
+                  <div key={idx}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px', color: '#e2e8f0', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <span>{item.label}</span>
+                      <span style={{ color: color }}>{item.score}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${item.score}%`, height: '100%', background: color, borderRadius: '4px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
           <div style={{marginBottom:16}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:6}}>
               Missing Keywords
