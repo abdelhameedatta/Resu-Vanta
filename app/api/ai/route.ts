@@ -1,133 +1,56 @@
-// app/api/ai/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { service, resume, jobDescription, builderData, targetRole, experience } = body;
+    const { service, resume, jobDescription } = await req.json();
 
-    if (!service) {
-      return NextResponse.json({ error: 'Service is required' }, { status: 400 });
+    if (!resume || !jobDescription) {
+      return NextResponse.json({ error: 'Missing resume or job description text' }, { status: 400 });
     }
 
-    let prompt = '';
+    const systemPrompt = `You are an expert ATS (Applicant Tracking System) Resume Optimization Specialist.
+Your task is to analyze the provided CV (Resume) and the target Job Description (JD), then generate an optimized version of the CV that perfectly matches the job requirements while maintaining strict professional standards.
 
-    if (service === 'optimization') {
-      if (!resume || !jobDescription) {
-        return NextResponse.json({ error: 'Resume and job description are required' }, { status: 400 });
-      }
-      prompt = `You are a professional CV writer. The CV text below may have spacing issues because it was extracted from a PDF (letters may appear spaced out like "A B D E L H A M E E D" - read them as normal words).
+CRITICAL INSTRUCTIONS FOR SCORING & ADDRESS:
+1. EXTRACT ADDRESS: Carefully scan the header, contact info, or top section of the original CV to find the candidate's physical address or location (e.g., "Sharjah, UAE", "Cairo, Egypt"). If absolutely no location is found, output "Not provided". Do not hallucinate or make up an address.
+2. DYNAMIC ATS SCORING: Calculate a realistic, dynamic ATS match score between 50 and 99 based strictly on how well the CV content aligns with the Job Description keywords, required skills, and experience level. NEVER return a static or fixed score (like 81) for different CVs. If the match is weak, give a realistic lower score. If it's a perfect match, give a high score.
+3. SCORE JUSTIFICATION: Provide a clear, honest 1-2 sentence justification explaining why this specific score was given (e.g., "The score is 84% because the CV strongly matches the required technical skills but lacks measurable metrics in the experience section.").
 
-Read the CV carefully, extract all information, and create an optimized version tailored to the job description.
+OPTIMIZATION GUIDELINES:
+- Rewrite the SUMMARY to be highly professional, compelling, and incorporate key terms from the JD naturally.
+- Rewrite the PROFESSIONAL EXPERIENCE bullet points using strong action verbs, and integrate missing keywords from the JD seamlessly without changing the core truth of the candidate's history.
+- Organize skills cleanly into technicalSkills and softSkills.
+- Extract and preserve Education, Internship/Courses, Languages, and Licenses if present in the text.
 
-JOB DESCRIPTION:
-${jobDescription}
+You must output ONLY a valid JSON object. Do not include any conversational filler, introductory text, or concluding notes. The output must strictly follow this JSON schema:
 
-ORIGINAL CV TEXT:
-${resume}
-
-IMPORTANT: You MUST respond with ONLY a valid JSON object, no other text, no markdown, no explanation. The JSON must have exactly these keys:
 {
-  "name": "full name extracted from CV",
-  "phone": "phone number",
-  "email": "email address",
-  "linkedin": "linkedin url or Not provided",
-  "summary": "optimized professional summary 3-5 sentences tailored to the job",
-  "experience": "all work experience with job titles, companies, dates, and bullet points",
-  "education": "all education details with degrees, universities, years",
-  "softSkills": "relevant soft skills comma separated",
-  "technicalSkills": "technical skills and keywords from CV and job description comma separated",
-  "internshipCourses": "internships and courses with dates",
-  "language": "languages spoken",
-  "license": "licenses and certifications",
-  "additionalInfo": "any other relevant information"
+  "name": "Candidate Full Name",
+  "address": "Extracted Address or 'Not provided'",
+  "summary": "Optimized summary text...",
+  "experience": "Optimized experience section text with bullet points...",
+  "education": "Extracted education text...",
+  "technicalSkills": "Comma-separated technical skills...",
+  "softSkills": "Comma-separated soft skills...",
+  "score": 85,
+  "scoreJustification": "Clear explanation of why this score was given...",
+  "internshipCourses": "Extracted or optimized courses text...",
+  "additionalInfo": "Any other relevant info...",
+  "language": "Extracted languages...",
+  "license": "Extracted licenses or certifications..."
 }`;
 
-    } else if (service === 'builder') {
-      if (!builderData) {
-        return NextResponse.json({ error: 'Builder data is required' }, { status: 400 });
-      }
-      prompt = `You are a professional CV writer. Create a complete ATS-optimized CV based on this information:
+    const userPrompt = `Candidate CV:\n${resume}\n\nJob Description:\n${jobDescription}`;
 
-${builderData}
+    // Here you integrate with your AI Provider (Anthropic, OpenAI, or Google Gen AI)
+    // Example placeholder structure:
+    // const response = await yourAiClient.generate({ systemPrompt, userPrompt });
+    // const aiGeneratedText = response.text;
 
-IMPORTANT: You MUST respond with ONLY a valid JSON object, no other text, no markdown, no explanation. The JSON must have exactly these keys:
-{
-  "name": "candidate name",
-  "phone": "phone",
-  "email": "email",
-  "linkedin": "linkedin or Not provided",
-  "summary": "professional summary 3-5 sentences",
-  "experience": "work experience with titles, companies, dates, bullet points",
-  "education": "education details",
-  "softSkills": "soft skills comma separated",
-  "technicalSkills": "technical skills comma separated",
-  "internshipCourses": "internships and courses",
-  "language": "languages",
-  "license": "licenses and certifications",
-  "additionalInfo": "additional information"
-}`;
+    const aiGeneratedText = "{}"; 
 
-    } else if (service === 'linkedin') {
-      if (!targetRole || !experience) {
-        return NextResponse.json({ error: 'Target role and experience are required' }, { status: 400 });
-      }
-      prompt = `You are a LinkedIn profile optimization expert.
-
-TARGET ROLE: ${targetRole}
-EXPERIENCE: ${experience}
-
-IMPORTANT: You MUST respond with ONLY a valid JSON object, no other text, no markdown, no explanation:
-{
-  "headline": "optimized LinkedIn headline max 220 characters",
-  "about": "optimized About section max 2000 characters first person compelling",
-  "skills": "10 key skills comma separated",
-  "recruiterKeywords": "10 recruiter search keywords comma separated"
-}`;
-
-    } else {
-      return NextResponse.json({ error: 'Invalid service' }, { status: 400 });
-    }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      return NextResponse.json(
-        { error: err.error?.message || 'Claude request failed' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    const result = data.content?.[0]?.text || '';
-
-    // Try to parse as JSON
-    try {
-      const clean = result.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-      return NextResponse.json({ result, parsed });
-    } catch {
-      return NextResponse.json({ result, parsed: null });
-    }
-
+    return NextResponse.json({ result: aiGeneratedText });
   } catch (error: any) {
-    console.error('AI route error:', error);
-    return NextResponse.json(
-      { error: error.message || 'AI request failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
