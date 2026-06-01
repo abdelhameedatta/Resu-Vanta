@@ -239,6 +239,46 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
+function parseAICV(rawText: any) {
+  if (typeof rawText === 'object' && rawText !== null) {
+    return {
+      name: rawText.name || rawText.NAME || '',
+      summary: rawText.summary || rawText.SUMMARY || '',
+      experience: rawText.experience || rawText['PROFESSIONAL EXPERIENCE'] || '',
+      education: rawText.education || rawText.EDUCATION || '',
+      technicalSkills: rawText.technicalSkills || rawText['TECHNICAL SKILLS'] || '',
+      softSkills: rawText.softSkills || rawText['SOFT SKILLS'] || '',
+      internshipCourses: rawText.internshipCourses || rawText['INTERNSHIP AND COURSES'] || '',
+      language: rawText.language || rawText.LANGUAGES || '',
+      license: rawText.license || rawText.LICENSES || '',
+      additionalInfo: rawText.additionalInfo || rawText['ADDITIONAL INFORMATION'] || '',
+    };
+  }
+
+  const text = typeof rawText === 'string' ? rawText : String(rawText || '');
+
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(label + '[*:#\\s]*([\\s\\S]*?)(?=[*:#\\s]*(?:' + next.join('|') + ')|$)', 'i');
+    const match = text.match(pattern);
+    return match ? match[1].trim() : '';
+  }
+
+  const sections = ['NAME', 'SUMMARY', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'TECHNICAL SKILLS', 'SOFT SKILLS', 'INTERNSHIP AND COURSES', 'LANGUAGES', 'LICENSES', 'ADDITIONAL INFORMATION'];
+  
+  return {
+    name: extract('NAME', sections.slice(1)),
+    summary: extract('SUMMARY', sections.slice(2)),
+    experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(3)),
+    education: extract('EDUCATION', sections.slice(4)),
+    technicalSkills: extract('TECHNICAL SKILLS', sections.slice(5)),
+    softSkills: extract('SOFT SKILLS', sections.slice(6)),
+    internshipCourses: extract('INTERNSHIP AND COURSES', sections.slice(7)),
+    language: extract('LANGUAGES', sections.slice(8)),
+    license: extract('LICENSES', sections.slice(9)),
+    additionalInfo: extract('ADDITIONAL INFORMATION', []),
+  };
+}
+
 function openPDFWindow(cv: any, title: string = 'Optimized CV') {
   const parseText = (text: any) => {
     if (!text) return '';
@@ -252,15 +292,15 @@ function openPDFWindow(cv: any, title: string = 'Optimized CV') {
   const html = `<!DOCTYPE html>
   <html><head><title>${parseText(title)}</title>
     <style>
-    @page { size: auto; margin: 0mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.6; margin: 0; padding: 20mm; }
+    @page { size: A4; margin: 20mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.6; margin: 0; padding: 0; max-width: 100%; word-wrap: break-word; }
     h1 { text-align: center; font-size: 24px; margin: 0 0 8px; letter-spacing: 1px; text-transform: uppercase; }
     .contact { text-align: center; font-size: 12px; margin-bottom: 24px; }
     h2 { font-size: 14px; border-bottom: 2px solid #111827; padding-bottom: 4px; margin: 18px 0 8px; letter-spacing: .5px; text-transform: uppercase; }
     p { margin: 6px 0; font-size: 13px; white-space: pre-wrap; text-align: justify; }
     </style></head>
     <body>
-    <h1>${parseText(cv.name)}</h1>
+    <h1>${parseText(cv.name) || 'YOUR NAME'}</h1>
     <div class="contact">ADDRESS: ${parseText(cv.address)} | PHONE: ${parseText(cv.phone)} | E-MAIL: ${parseText(cv.email)} | LinkedIn: ${parseText(cv.linkedin)}</div>
     <h2>SUMMARY</h2><p>${parseText(cv.summary)}</p>
     <h2>PROFESSIONAL EXPERIENCE</h2><p>${parseText(cv.experience)}</p>
