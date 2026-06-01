@@ -25,6 +25,7 @@ async function callAI(payload) {
 function parseAICV(rawText) {
   if (typeof rawText === 'object' && rawText !== null) {
     return {
+      name: rawText.name || rawText.NAME || '',
       summary: rawText.summary || rawText.SUMMARY || '',
       experience: rawText.experience || rawText['PROFESSIONAL EXPERIENCE'] || '',
       education: rawText.education || rawText.EDUCATION || '',
@@ -45,17 +46,18 @@ function parseAICV(rawText) {
     return match ? match[1].trim() : '';
   }
 
-  const sections = ['SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
-  
+  const sections = ['NAME','SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
+
   return {
-    summary: extract('SUMMARY', sections.slice(1)),
-    experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(2)),
-    education: extract('EDUCATION', sections.slice(3)),
-    technicalSkills: extract('TECHNICAL SKILLS', sections.slice(4)),
-    softSkills: extract('SOFT SKILLS', sections.slice(5)),
-    internshipCourses: extract('INTERNSHIP AND COURSES', sections.slice(6)),
-    language: extract('LANGUAGES', sections.slice(7)),
-    license: extract('LICENSES', sections.slice(8)),
+    name: extract('NAME', sections.slice(1)),
+    summary: extract('SUMMARY', sections.slice(2)),
+    experience: extract('PROFESSIONAL EXPERIENCE', sections.slice(3)),
+    education: extract('EDUCATION', sections.slice(4)),
+    technicalSkills: extract('TECHNICAL SKILLS', sections.slice(5)),
+    softSkills: extract('SOFT SKILLS', sections.slice(6)),
+    internshipCourses: extract('INTERNSHIP AND COURSES', sections.slice(7)),
+    language: extract('LANGUAGES', sections.slice(8)),
+    license: extract('LICENSES', sections.slice(9)),
     additionalInfo: extract('ADDITIONAL INFORMATION', []),
   };
 }
@@ -252,8 +254,9 @@ function openPDFWindow(cv: any, title: string = 'Optimized CV') {
   const html = `<!DOCTYPE html>
   <html><head><title>${parseText(title)}</title>
     <style>
-    @page { size: auto; margin: 0mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.6; margin: 0; padding: 20mm; }
+    @page { size: A4; margin: 20mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.6; margin: 0; padding: 0; max-width: 100%; word-wrap: break-word; }
     h1 { text-align: center; font-size: 24px; margin: 0 0 8px; letter-spacing: 1px; text-transform: uppercase; }
     .contact { text-align: center; font-size: 12px; margin-bottom: 24px; }
     h2 { font-size: 14px; border-bottom: 2px solid #111827; padding-bottom: 4px; margin: 18px 0 8px; letter-spacing: .5px; text-transform: uppercase; }
@@ -521,8 +524,8 @@ async function generatePaidOptimizationCV() {
       const p = aiParsed || {};
       const analysis = analyzeResume(resume, jobDescription);
       const cv = {
-        name: guessName(resume)||'NAME', address:'Not provided',
-        phone: guessPhone(resume), email: guessEmail(resume), linkedin: guessLinkedIn(resume),
+        name: p.name || guessName(resume) || 'NAME', address:'Not provided',
+        phone: p.phone || guessPhone(resume), email: p.email || guessEmail(resume), linkedin: p.linkedin || guessLinkedIn(resume),
         summary: p.summary || 'Please add your summary here.',
         experience: p.experience || 'Please add your experience here.',
         education: p.education || guessEducation(resume),
