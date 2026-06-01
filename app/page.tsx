@@ -254,13 +254,13 @@ function openPDFWindow(cv: any, title: string = 'Optimized CV') {
   const html = `<!DOCTYPE html>
   <html><head><title>${parseText(title)}</title>
     <style>
-    @page { size: A4; margin: 20mm; }
-    * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.6; margin: 0; padding: 0; max-width: 100%; word-wrap: break-word; }
-    h1 { text-align: center; font-size: 24px; margin: 0 0 8px; letter-spacing: 1px; text-transform: uppercase; }
-    .contact { text-align: center; font-size: 12px; margin-bottom: 24px; }
-    h2 { font-size: 14px; border-bottom: 2px solid #111827; padding-bottom: 4px; margin: 18px 0 8px; letter-spacing: .5px; text-transform: uppercase; }
-    p { margin: 6px 0; font-size: 13px; white-space: pre-wrap; text-align: justify; }
+    @page { size: A4; margin: 15mm; }
+    @media print { header, footer, .no-print { display: none !important; } body { padding: 0; -webkit-print-color-adjust: exact; } }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.5; padding: 10px; }
+    h1 { text-align: center; font-size: 24px; margin: 0 0 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .contact { text-align: center; font-size: 11px; margin-bottom: 20px; color: #374151; }
+    h2 { font-size: 13px; border-bottom: 1.5px solid #111827; padding-bottom: 3px; margin: 16px 0 6px; letter-spacing: .5px; text-transform: uppercase; font-weight: bold; }
+    p { margin: 4px 0; font-size: 12px; white-space: pre-wrap; text-align: justify; }
     </style></head>
     <body>
     <h1>${parseText(cv.name)}</h1>
@@ -520,21 +520,26 @@ async function generatePaidOptimizationCV() {
     if (used>=3) { setError('You have used all 3 CV outputs for this payment session.'); return; }
     setLoading(true); setError('');
     try {
-      const { parsed: aiParsed } = await callAI({ service:'optimization', resume, jobDescription });
-      const p = aiParsed || {};
+      const { result: aiText, parsed: aiParsed } = await callAI({ service:'optimization', resume, jobDescription });
+      const parsed = parseAICV(aiParsed || aiText);
       const analysis = analyzeResume(resume, jobDescription);
+      if (parsed.score > 0) analysis.score = parsed.score;
       const cv = {
-        name: p.name || guessName(resume) || 'NAME', address:'Not provided',
-        phone: p.phone || guessPhone(resume), email: p.email || guessEmail(resume), linkedin: p.linkedin || guessLinkedIn(resume),
-        summary: p.summary || 'Please add your summary here.',
-        experience: p.experience || 'Please add your experience here.',
-        education: p.education || guessEducation(resume),
-        softSkills: p.softSkills || 'Communication, teamwork, problem solving, time management',
-        technicalSkills: p.technicalSkills || analysis.found.join(', '),
-        internshipCourses: p.internshipCourses || 'Not provided',
-        additionalInfo: p.additionalInfo || '',
-        language: p.language || guessLanguage(resume),
-        license: p.license || guessLicense(resume),
+        name: parsed.name || guessName(resume) || 'NAME',
+        address: parsed.address || 'Not provided',
+        phone: guessPhone(resume),
+        email: guessEmail(resume),
+        linkedin: guessLinkedIn(resume),
+        summary: parsed.summary || 'Please add your summary here.',
+        experience: parsed.experience || 'Please add your experience here.',
+        education: parsed.education || guessEducation(resume),
+        softSkills: parsed.softSkills || 'Communication, teamwork, problem solving, time management',
+        technicalSkills: parsed.technicalSkills || analysis.found.join(', '),
+        internshipCourses: parsed.internshipCourses || 'Not provided',
+        additionalInfo: parsed.additionalInfo || '',
+        language: parsed.language || guessLanguage(resume),
+        license: parsed.license || guessLicense(resume),
+        scoreJustification: parsed.scoreJustification || '',
       };
       const newCount = increaseUsageCount('optimization');
       const remaining = Math.max(0,3-newCount);
@@ -678,6 +683,7 @@ async function generatePaidOptimizationCV() {
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Phone Number</label><input value={paidCV.phone} onChange={e=>updatePaidCVField('phone',e.target.value)} placeholder="e.g. +971 50 123 4567"/></div>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Email Address</label><input value={paidCV.email} onChange={e=>updatePaidCVField('email',e.target.value)} placeholder="e.g. name@email.com"/></div>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>LinkedIn URL</label><input value={paidCV.linkedin} onChange={e=>updatePaidCVField('linkedin',e.target.value)} placeholder="e.g. linkedin.com/in/yourname"/></div>
+              <div style={{gridColumn:'span 2'}}><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Address</label><input value={paidCV.address||''} onChange={e=>updatePaidCVField('address',e.target.value)} placeholder="e.g. Sharjah, UAE"/></div>
             </div>
           </div>
           <div style={{marginBottom:20}}>
@@ -723,6 +729,12 @@ async function generatePaidOptimizationCV() {
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Information</p>
             <textarea style={{minHeight:80}} value={paidCV.additionalInfo} onChange={e=>updatePaidCVField('additionalInfo',e.target.value)} placeholder="e.g. UAE driving license holder."/>
           </div>
+          {paidCV?.scoreJustification && (
+            <div style={{marginBottom:18,padding:14,background:'rgba(217,119,6,0.1)',border:'1px solid rgba(217,119,6,0.2)',borderRadius:12}}>
+              <p style={{fontWeight:700,fontSize:14,color:'#f59e0b',marginBottom:4}}>Score Justification</p>
+              <p style={{color:'#94a3b8',fontSize:13}}>{paidCV.scoreJustification}</p>
+            </div>
+          )}
           <h3>Live Preview</h3>
           <CVTemplatePreview cv={paidCV} />
           <button onClick={()=>{
