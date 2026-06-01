@@ -239,6 +239,7 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
+// ─── AI Call ─────────────────────────────────────────────────────────────────
 function parseAICV(rawText: any) {
   if (typeof rawText === 'object' && rawText !== null) {
     return {
@@ -279,6 +280,33 @@ function parseAICV(rawText: any) {
   };
 }
 
+function parseLinkedInOutput(rawText: any) {
+  if (typeof rawText === 'object' && rawText !== null) {
+    return {
+      headline: rawText.headline || rawText.HEADLINE || '',
+      about: rawText.about || rawText.ABOUT || '',
+      skills: rawText.skills || rawText.SKILLS || '',
+      recruiterKeywords: rawText.recruiterKeywords || rawText['RECRUITER KEYWORDS'] || '',
+    };
+  }
+
+  const text = typeof rawText === 'string' ? rawText : String(rawText || '');
+
+  function extract(label: string, next: string[]) {
+    const pattern = new RegExp(label + '[*:#\\s]*([\\s\\S]*?)(?=[*:#\\s]*(?:' + next.join('|') + ')|$)', 'i');
+    const match = text.match(pattern);
+    return match ? match[1].trim() : '';
+  }
+
+  return {
+    headline: extract('HEADLINE', ['ABOUT','SKILLS','RECRUITER']),
+    about: extract('ABOUT', ['SKILLS','RECRUITER']),
+    skills: extract('SKILLS', ['RECRUITER']),
+    recruiterKeywords: extract('RECRUITER KEYWORDS', []),
+  };
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
 function openPDFWindow(cv: any, title: string = 'Optimized CV') {
   const parseText = (text: any) => {
     if (!text) return '';
