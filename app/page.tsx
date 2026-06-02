@@ -439,6 +439,7 @@ function Home({ setPage }) {
 }
 
 // ─── Optimization Page ────────────────────────────────────────────────────────
+// ─── Optimization Page ────────────────────────────────────────────────────────
 function OptimizationPage() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -523,8 +524,8 @@ function OptimizationPage() {
       const parsed = parseAICV(aiParsed || aiText);
       const analysis = analyzeResume(resume, jobDescription);
       
-      // 💡 تم حذف السطر القديم اللي كان بيثبت السكور على 85 هنا، عشان يظهر السكور الحقيقي الديناميكي دايماً.
-
+      // ✅ تم حذف السطر اللي كان بيثبت السكور هنا عشان الرقم يفضل ديناميكي بناءً على الكلمات المفتاحية
+      
       if (parsed.suggestedAchievements && parsed.suggestedAchievements.length > 0) {
         setSuggestedAchievements(parsed.suggestedAchievements);
         setSelectedAchievements([]);
@@ -622,7 +623,7 @@ function OptimizationPage() {
 
           <div style={{marginBottom:16}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:6}}>
-              Missing Keywords 
+              Missing Keywords
               <span style={{fontWeight:400,color:'#94a3b8',fontSize:13,marginLeft:8}}>
                 We found <b style={{color:'#f1f5f9'}}>{result.missingCount}</b> missing important keywords.
               </span>
@@ -660,12 +661,10 @@ function OptimizationPage() {
               </>
             )}
           </div>
-
           <div style={{marginBottom:16}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:4}}>Quick Improvement</p>
             <p style={{color:'#94a3b8',fontSize:13}}>{result.quickImprovement}</p>
           </div>
-
           <div className="locked-card">
             <h3>Unlock Full CV Optimization — {PRICES.optimization}</h3>
             <p>Get the complete ATS keyword report, rewritten summary with professional sentences, improved experience section, skills optimization, and a downloadable PDF CV.</p>
@@ -677,9 +676,24 @@ function OptimizationPage() {
                 </button>
               </div>
             ) : showPayment ? (
-              <StripeWrapper service="optimization" onSuccess={() => { setShowPayment(false); setPaymentConfirmed(true); setRemainingOutputs(3); setMessage('Payment confirmed. You can generate up to 3 optimized CVs.'); }} onCancel={() => setShowPayment(false)} />
+              <StripeWrapper
+                service="optimization"
+                onSuccess={() => {
+                  setShowPayment(false);
+                  setPaymentConfirmed(true);
+                  setRemainingOutputs(3);
+                  setMessage('Payment confirmed. You can generate up to 3 optimized CVs.');
+                }}
+                onCancel={() => setShowPayment(false)}
+              />
             ) : (
-              <button onClick={() => { if (!resume.trim() || !jobDescription.trim()) { setError('Please upload CV and paste job description first.'); return; } setShowPayment(true); }}>
+              <button onClick={() => {
+                if (!resume.trim() || !jobDescription.trim()) {
+                  setError('Please upload CV and paste job description first.');
+                  return;
+                }
+                setShowPayment(true);
+              }}>
                 Optimize My CV — {PRICES.optimization}
               </button>
             )}
@@ -697,7 +711,6 @@ function OptimizationPage() {
               {profSentences.map((s,i)=><p key={i} style={{color:'#86efac',fontSize:13,marginBottom:4}}>• {s}</p>)}
             </div>
           )}
-
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Personal Information</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
@@ -708,39 +721,111 @@ function OptimizationPage() {
               <div style={{gridColumn:'span 2'}}><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Address</label><input value={paidCV.address||''} onChange={e=>updatePaidCVField('address',e.target.value)} placeholder="e.g. Sharjah, UAE"/></div>
             </div>
           </div>
-
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Summary</p>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Write 3–5 sentences about your background, skills, and career goal.</p>
             <textarea style={{minHeight:120}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
           </div>
-
-          {suggestedAchievements.length > 0 && (
-            <div style={{marginBottom:20}}>
-              <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Suggested Achievements</p>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                {suggestedAchievements.map((ach, i) => (
-                  <label key={i} style={{display:'flex',alignItems:'flex-start',gap:8,background:'#0f172a',padding:10,borderRadius:8,border:'1px solid #1e293b',cursor:'pointer'}}>
-                    <input type="checkbox" checked={selectedAchievements.includes(ach)} onChange={(e) => {
-                      if (e.target.checked) setSelectedAchievements([...selectedAchievements, ach]);
-                      else setSelectedAchievements(selectedAchievements.filter(a => a !== ach));
-                    }} />
-                    <span style={{fontSize:13,color:'#e2e8f0'}}>{ach}</span>
-                  </label>
-                ))}
+          <div style={{marginBottom:20}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Experience</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements.</p>
+            <textarea style={{minHeight:160}} value={paidCV.experience} onChange={e=>updatePaidCVField('experience',e.target.value)} placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients'}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Education</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Include your degree, university, graduation year, and country.</p>
+            <textarea style={{minHeight:80}} value={paidCV.education} onChange={e=>updatePaidCVField('education',e.target.value)} placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Skills</p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div>
+                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Soft Skills</label>
+                <textarea style={{minHeight:80}} value={paidCV.softSkills} onChange={e=>updatePaidCVField('softSkills',e.target.value)} placeholder="e.g. Communication, teamwork..."/>
               </div>
+              <div>
+                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Technical Skills</label>
+                <textarea style={{minHeight:80}} value={paidCV.technicalSkills} onChange={e=>updatePaidCVField('technicalSkills',e.target.value)} placeholder="e.g. Clinical pharmacy, dispensing..."/>
+              </div>
+            </div>
+          </div>
+          <div style={{marginBottom:20}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Internship and Courses</p>
+            <textarea style={{minHeight:100}} value={paidCV.internshipCourses} onChange={e=>updatePaidCVField('internshipCourses',e.target.value)} placeholder={'e.g.\nPharmacy Internship — Cairo Hospital (2017)'}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Details</p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Languages</label><input value={paidCV.language} onChange={e=>updatePaidCVField('language',e.target.value)} placeholder="e.g. Arabic (native), English (fluent)"/></div>
+              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Licenses & Certifications</label><input value={paidCV.license} onChange={e=>updatePaidCVField('license',e.target.value)} placeholder="e.g. UAE Pharmacist License, DHA"/></div>
+            </div>
+          </div>
+          <div style={{marginBottom:24}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Information</p>
+            <textarea style={{minHeight:80}} value={paidCV.additionalInfo} onChange={e=>updatePaidCVField('additionalInfo',e.target.value)} placeholder="e.g. UAE driving license holder."/>
+          </div>
+          {paidCV?.scoreJustification && (
+            <div style={{marginBottom:18,padding:14,background:'rgba(217,119,6,0.1)',border:'1px solid rgba(217,119,6,0.2)',borderRadius:12}}>
+              <p style={{fontWeight:700,fontSize:14,color:'#f59e0b',marginBottom:4}}>Score Justification</p>
+              <p style={{color:'#94a3b8',fontSize:13}}>{paidCV.scoreJustification}</p>
+            </div>
+          )}
+          
+          {suggestedAchievements.length > 0 && (
+            <div style={{marginBottom:24,padding:16,background:'rgba(37,99,235,0.08)',border:'1px solid rgba(37,99,235,0.25)',borderRadius:12}}>
+              <p style={{fontWeight:700,fontSize:15,color:'#93c5fd',marginBottom:4}}>⭐ Suggested Achievements</p>
+              <p style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>
+                Select achievements that apply to you, fill in your numbers, then click Add to CV.
+              </p>
+              {suggestedAchievements.map((achievement, i) => {
+                const isSelected = selectedAchievements.some(a => a.index === i);
+                const selected = selectedAchievements.find(a => a.index === i);
+                return (
+                  <div key={i} style={{marginBottom:10,padding:12,background:isSelected?'rgba(37,99,235,0.12)':'rgba(255,255,255,0.02)',border:isSelected?'1px solid rgba(37,99,235,0.4)':'1px solid rgba(255,255,255,0.08)',borderRadius:8}}>
+                    <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+                      <input type="checkbox" checked={isSelected} style={{marginTop:3,cursor:'pointer',width:16,height:16,flexShrink:0}}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedAchievements(prev => [...prev, { index: i, text: achievement, customText: achievement }]);
+                          else setSelectedAchievements(prev => prev.filter(a => a.index !== i));
+                        }}
+                      />
+                      <div style={{flex:1}}>
+                        <p style={{fontSize:13,color:'#e2e8f0',marginBottom:isSelected?6:0}}>{achievement}</p>
+                        {isSelected && (
+                          <textarea style={{width:'100%',minHeight:60,fontSize:12,marginTop:4}} value={selected?.customText || achievement}
+                            placeholder="Edit and fill in your numbers..."
+                            onChange={e => setSelectedAchievements(prev => prev.map(a => a.index===i ? {...a, customText:e.target.value} : a))}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {selectedAchievements.length > 0 && (
+                <button style={{marginTop:8,background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer',fontSize:14}}
+                  onClick={() => {
+                    const added = selectedAchievements.map(a => '• ' + (a.customText || a.text)).join('\n');
+                    updatePaidCVField('experience', (paidCV.experience || '') + '\n\n' + added);
+                    setSuggestedAchievements([]);
+                    setSelectedAchievements([]);
+                  }}
+                >
+                  ✓ Add Selected to CV Experience
+                </button>
+              )}
             </div>
           )}
 
-          <div style={{display:'flex',gap:12,marginTop:20}}>
-            <button onClick={() => {
-              let finalExp = paidCV.experience;
-              if (selectedAchievements.length > 0) {
-                finalExp += '\n\nKey Achievements:\n' + selectedAchievements.map(a => `• ${a}`).join('\n');
-              }
-              openPDFWindow({...paidCV, experience: finalExp});
-            }}>Download PDF CV</button>
-          </div>
+          <h3>Live Preview</h3>
+          <CVTemplatePreview cv={paidCV} />
+          <button onClick={()=>{
+            openPDFWindow(paidCV,'Optimized CV');
+            clearServiceSession('optimization');
+            setPaymentConfirmed(false); setRemainingOutputs(3);
+            setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
+            setMessage('PDF downloaded. Temporary session data has been cleared.');
+          }}>Download PDF</button>
         </div>
       )}
     </section>
