@@ -8,48 +8,91 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing resume or job description text' }, { status: 400 });
     }
 
-    const systemPrompt = `You are an expert ATS (Applicant Tracking System) Resume Optimization Specialist.
-Your task is to analyze the provided CV (Resume) and the target Job Description (JD), then generate an optimized version of the CV that perfectly matches the job requirements while maintaining strict professional standards.
+    const systemPrompt = `You are an expert ATS Resume Optimization Specialist and Professional CV Writer.
 
-CRITICAL INSTRUCTIONS FOR SCORING & ADDRESS:
-1. EXTRACT ADDRESS: Carefully scan the header, contact info, or top section of the original CV to find the candidate's physical address or location (e.g., "Sharjah, UAE", "Cairo, Egypt"). If absolutely no location is found, output "Not provided". Do not hallucinate or make up an address.
-2. DYNAMIC ATS SCORING: Calculate a realistic, dynamic ATS match score between 50 and 99 based strictly on how well the CV content aligns with the Job Description keywords, required skills, and experience level. NEVER return a static or fixed score (like 81) for different CVs. If the match is weak, give a realistic lower score. If it's a perfect match, give a high score.
-3. SCORE JUSTIFICATION: Provide a clear, honest 1-2 sentence justification explaining why this specific score was given (e.g., "The score is 84% because the CV strongly matches the required technical skills but lacks measurable metrics in the experience section.").
+YOUR MISSION: Transform the candidate's CV into a polished, professional document that reads naturally and compellingly — NOT a keyword-stuffed list.
 
-OPTIMIZATION GUIDELINES:
-- Rewrite the SUMMARY to be highly professional, compelling, and incorporate key terms from the JD naturally.
-- Rewrite the PROFESSIONAL EXPERIENCE bullet points using strong action verbs, and integrate missing keywords from the JD seamlessly without changing the core truth of the candidate's history.
-- Organize skills cleanly into technicalSkills and softSkills.
-- Extract and preserve Education, Internship/Courses, Languages, and Licenses if present in the text.
+STRICT WRITING RULES:
+1. IMPROVE SENTENCES: Rewrite every bullet point to sound more professional, confident, and impactful. Use strong action verbs (Spearheaded, Orchestrated, Delivered, Achieved, Streamlined, etc.).
+2. DO NOT STUFF KEYWORDS: Never add a list of keywords at the end of any section. Keywords must be woven naturally into professional sentences only.
+3. KEEP THE TRUTH: Only use information that exists in the original CV. Do not invent jobs, degrees, or skills.
+4. BULLET POINTS: Format the experience section with clear bullet points (•) and line breaks between each point.
+5. PROFESSIONAL TONE: Every sentence must sound like it was written by a senior HR professional.
 
-You must output ONLY a valid JSON object. Do not include any conversational filler, introductory text, or concluding notes. The output must strictly follow this JSON schema:
+SCORING RULES:
+1. EXTRACT ADDRESS: Find the candidate's location from the CV header or contact section. If not found, output "Not provided".
+2. DYNAMIC SCORE: Give a realistic ATS score (50-99) based on how well the CV matches the Job Description. Different CVs must get different scores. A weak match gets a low score. A strong match gets a high score.
+3. SCORE JUSTIFICATION: Write 1-2 honest sentences explaining exactly why this score was given.
+
+SUGGESTED ACHIEVEMENTS RULES:
+Generate exactly 3 quantifiable achievement suggestions that are:
+- NOT already in the CV
+- Highly relevant to the target job role from the Job Description
+- Based on real metrics professionals in this role typically achieve
+- Written as templates with [XX] or [Number] placeholders for the candidate to fill in
+- Designed to significantly boost the ATS score if added
+
+You must output ONLY a valid JSON object. No text before or after. Follow this exact schema:
 
 {
-  "name": "Candidate Full Name",
-  "address": "Extracted Address or 'Not provided'",
-  "summary": "Optimized summary text...",
-  "experience": "Optimized experience section text with bullet points...",
-  "education": "Extracted education text...",
-  "technicalSkills": "Comma-separated technical skills...",
-  "softSkills": "Comma-separated soft skills...",
-  "score": 85,
-  "scoreJustification": "Clear explanation of why this score was given...",
-  "internshipCourses": "Extracted or optimized courses text...",
-  "additionalInfo": "Any other relevant info...",
-  "language": "Extracted languages...",
-  "license": "Extracted licenses or certifications..."
+  "name": "Full name from CV",
+  "address": "Location from CV or Not provided",
+  "summary": "Highly professional rewritten summary with natural JD keywords",
+  "experience": "Professionally rewritten experience with strong action verbs and bullet points",
+  "education": "Education details from CV",
+  "technicalSkills": "Technical skills organized cleanly",
+  "softSkills": "Soft skills organized cleanly",
+  "score": 75,
+  "scoreJustification": "Honest explanation of why this score was given",
+  "internshipCourses": "Courses and internships from CV",
+  "additionalInfo": "Any other relevant info from CV",
+  "language": "Languages from CV",
+  "license": "Licenses and certifications from CV",
+  "suggestedAchievements": [
+    "Achievement template 1 with [XX]% or [Number] placeholder relevant to the job",
+    "Achievement template 2 with [XX]% or [Number] placeholder relevant to the job",
+    "Achievement template 3 with [XX]% or [Number] placeholder relevant to the job"
+  ]
 }`;
 
     const userPrompt = `Candidate CV:\n${resume}\n\nJob Description:\n${jobDescription}`;
 
-    // Here you integrate with your AI Provider (Anthropic, OpenAI, or Google Gen AI)
-    // Example placeholder structure:
-    // const response = await yourAiClient.generate({ systemPrompt, userPrompt });
-    // const aiGeneratedText = response.text;
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 2500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
 
-    const aiGeneratedText = "{}"; 
+    if (!response.ok) {
+      const err = await response.json();
+      return NextResponse.json({ error: err.error?.message || 'AI request failed' }, { status: response.status });
+    }
 
-    return NextResponse.json({ result: aiGeneratedText });
+    const data = await response.json();
+    const aiGeneratedText = data.content?.[0]?.text || '{}';
+
+    let parsed = null;
+    try {
+      const clean = aiGeneratedText.replace(/```json|```/g, '').trim();
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        parsed = JSON.parse(clean.substring(start, end + 1));
+      }
+    } catch {
+      parsed = null;
+    }
+
+    return NextResponse.json({ result: aiGeneratedText, parsed });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
