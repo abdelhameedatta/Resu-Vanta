@@ -449,6 +449,8 @@ function OptimizationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [suggestedAchievements, setSuggestedAchievements] = useState([]);
+  const [selectedAchievements, setSelectedAchievements] = useState([]);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
 
@@ -520,6 +522,10 @@ function OptimizationPage() {
       const parsed = parseAICV(aiParsed || aiText);
       const analysis = analyzeResume(resume, jobDescription);
       if (parsed.score > 0) analysis.score = parsed.score;
+      if (parsed.suggestedAchievements && parsed.suggestedAchievements.length > 0) {
+        setSuggestedAchievements(parsed.suggestedAchievements);
+        setSelectedAchievements([]);
+      }
       const cv = {
         name: parsed.name || guessName(resume) || 'NAME',
         address: parsed.address || 'Not provided',
@@ -760,6 +766,55 @@ function OptimizationPage() {
               <p style={{color:'#94a3b8',fontSize:13}}>{paidCV.scoreJustification}</p>
             </div>
           )}
+          {suggestedAchievements.length > 0 && (
+            <div style={{marginBottom:24,padding:16,background:'rgba(37,99,235,0.08)',border:'1px solid rgba(37,99,235,0.25)',borderRadius:12}}>
+              <p style={{fontWeight:700,fontSize:15,color:'#93c5fd',marginBottom:4}}>⭐ Suggested Achievements</p>
+              <p style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>
+                Select achievements that apply to you, fill in your numbers, then click Add to CV.
+              </p>
+              {suggestedAchievements.map((achievement, i) => {
+                const isSelected = selectedAchievements.some(a => a.index === i);
+                const selected = selectedAchievements.find(a => a.index === i);
+                return (
+                  <div key={i} style={{marginBottom:10,padding:12,background:isSelected?'rgba(37,99,235,0.12)':'rgba(255,255,255,0.02)',border:isSelected?'1px solid rgba(37,99,235,0.4)':'1px solid rgba(255,255,255,0.08)',borderRadius:8}}>
+                    <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+                      <input type="checkbox" checked={isSelected} style={{marginTop:3,cursor:'pointer',width:16,height:16,flexShrink:0}}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedAchievements(prev => [...prev, { index: i, text: achievement, customText: achievement }]);
+                          else setSelectedAchievements(prev => prev.filter(a => a.index !== i));
+                        }}
+                      />
+                      <div style={{flex:1}}>
+                        <p style={{fontSize:13,color:'#e2e8f0',marginBottom:isSelected?6:0}}>{achievement}</p>
+                        {isSelected && (
+                          <textarea style={{width:'100%',minHeight:60,fontSize:12,marginTop:4}} value={selected?.customText || achievement}
+                            placeholder="Edit and fill in your numbers..."
+                            onChange={e => setSelectedAchievements(prev => prev.map(a => a.index===i ? {...a, customText:e.target.value} : a))}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {selectedAchievements.length > 0 && (
+                <button style={{marginTop:8,background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer',fontSize:14}}
+                  onClick={() => {
+                    const added = selectedAchievements.map(a => '• ' + (a.customText || a.text)).join('
+');
+                    updatePaidCVField('experience', (paidCV.experience || '') + '
+
+' + added);
+                    setSuggestedAchievements([]);
+                    setSelectedAchievements([]);
+                  }}
+                >
+                  ✓ Add Selected to CV Experience
+                </button>
+              )}
+            </div>
+          )}
+
           <h3>Live Preview</h3>
           <CVTemplatePreview cv={paidCV} />
           <button onClick={()=>{
