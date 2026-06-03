@@ -94,7 +94,7 @@ You must output ONLY a valid JSON object. No text before or after. Follow this e
       userPrompt = `Candidate CV:\n${resume}\n\nJob Description:\n${jobDescription}`;
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -119,8 +119,8 @@ You must output ONLY a valid JSON object. No text before or after. Follow this e
 
     let parsed = null;
     try {
-      const clean = aiGeneratedText.replace(/```json|
-```/g, '').trim();
+      // Fix: Using RegExp constructor to avoid Vercel build error "Unterminated regexp literal"
+      const clean = aiGeneratedText.replace(new RegExp('```json|```', 'g'), '').trim();
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
       if (start !== -1 && end !== -1) {
