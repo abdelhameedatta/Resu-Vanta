@@ -35,19 +35,16 @@ function parseAICV(rawText) {
       language: rawText.language || rawText.LANGUAGES || '',
       license: rawText.license || rawText.LICENSES || '',
       additionalInfo: rawText.additionalInfo || rawText['ADDITIONAL INFORMATION'] || '',
+      suggestedAchievements: rawText.suggestedAchievements || [],
     };
   }
-
   const text = typeof rawText === 'string' ? rawText : String(rawText || '');
-
   function extract(label, next) {
     const pattern = new RegExp(label + '[*:#\\s]*([\\s\\S]*?)(?=[*:#\\s]*(?:' + next.join('|') + ')|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
-
   const sections = ['NAME','SUMMARY','PROFESSIONAL EXPERIENCE','EDUCATION','TECHNICAL SKILLS','SOFT SKILLS','INTERNSHIP AND COURSES','LANGUAGES','LICENSES','ADDITIONAL INFORMATION'];
-
   return {
     name: extract('NAME', sections.slice(1)),
     summary: extract('SUMMARY', sections.slice(2)),
@@ -59,6 +56,7 @@ function parseAICV(rawText) {
     language: extract('LANGUAGES', sections.slice(8)),
     license: extract('LICENSES', sections.slice(9)),
     additionalInfo: extract('ADDITIONAL INFORMATION', []),
+    suggestedAchievements: [],
   };
 }
 
