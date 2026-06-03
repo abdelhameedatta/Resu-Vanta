@@ -875,6 +875,8 @@ function OptimizationPage() {
 
 // ─── Builder Wizard ───────────────────────────────────────────────────────────
 function BuilderWizard() {
+  const [suggestedSoftSkills, setSuggestedSoftSkills] = useState([]);
+  const [suggestedTechnicalSkills, setSuggestedTechnicalSkills] = useState([]);
   const [step, setStep] = useState(1);
   const [builtCV, setBuiltCV] = useState(null);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
