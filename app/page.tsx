@@ -479,7 +479,9 @@ function OptimizationPage() {
   const [selectedAchievements, setSelectedAchievements] = useState([]);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
-
+  const [suggestedSoftSkills, setSuggestedSoftSkills] = useState([]);
+  const [suggestedTechnicalSkills, setSuggestedTechnicalSkills] = useState([]);
+  
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
