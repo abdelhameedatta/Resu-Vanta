@@ -119,7 +119,8 @@ You must output ONLY a valid JSON object. No text before or after. Follow this e
 
     let parsed = null;
     try {
-      const clean = aiGeneratedText.replace(/```json|```/g, '').trim();
+      const clean = aiGeneratedText.replace(/```json|
+```/g, '').trim();
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
       if (start !== -1 && end !== -1) {
