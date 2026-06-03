@@ -69,15 +69,12 @@ function parseLinkedInOutput(rawText) {
       recruiterKeywords: rawText.recruiterKeywords || rawText['RECRUITER KEYWORDS'] || '',
     };
   }
-
   const text = typeof rawText === 'string' ? rawText : String(rawText || '');
-
   function extract(label, next) {
     const pattern = new RegExp(label + '[*:#\\s]*([\\s\\S]*?)(?=[*:#\\s]*(?:' + next.join('|') + ')|$)', 'i');
     const match = text.match(pattern);
     return match ? match[1].trim() : '';
   }
-
   return {
     headline: extract('HEADLINE', ['ABOUT','SKILLS','RECRUITER']),
     about: extract('ABOUT', ['SKILLS','RECRUITER']),
@@ -123,9 +120,6 @@ function cleanText(text) {
 function cleanKeyword(word) {
   return word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,'').trim();
 }
-function escapeHTML(text) {
-  return String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
 function extractKeywords(text, limit = 25) {
   const cleaned = cleanText(text);
   const counts = new Map();
@@ -139,39 +133,29 @@ function extractKeywords(text, limit = 25) {
 }
 
 // ─── Analysis ─────────────────────────────────────────────────────────────────
-function analyzeResume(resume: string, jobDescription: string) {
+function analyzeResume(resume, jobDescription) {
   const resumeText = cleanText(resume);
   const jobText = cleanText(jobDescription);
-  
   const keywords = extractKeywords(jobText, 25);
   const found = keywords.filter(k => resumeText.includes(k));
   const missing = keywords.filter(k => !resumeText.includes(k));
-  
   const keywordScoreRaw = keywords.length ? (found.length / keywords.length) * 100 : 0;
   const keywordMatchPct = Math.round(keywordScoreRaw);
-
   const sentenceCount = (resumeText.match(/[.!?]/g)||[]).length;
   const hasActionVerbs = /(managed|led|developed|achieved|improved|reduced|increased|delivered|designed|coordinated|supervised|trained|implemented)/i.test(resumeText);
   const hasMetrics = /(\d+\s*%|\d+\s*years|\d+\s*team|\d+\s*million|\d+\s*patients|\d+\s*clients)/i.test(resumeText);
   const professionalScore = Math.min(100, Math.round((hasActionVerbs ? 35 : 10) + (hasMetrics ? 35 : 10) + Math.min(sentenceCount * 2, 30)));
-
   const experienceKeywords = extractKeywords(jobText, 10);
   const expFound = experienceKeywords.filter(k => resumeText.includes(k));
   const experienceScore = experienceKeywords.length ? Math.round((expFound.length / experienceKeywords.length) * 100) : 0;
-
   const hasSkillsSection = /(skills|technologies|tools|competencies)/.test(resumeText);
   const skillsScore = Math.min(100, Math.round((keywordMatchPct * 0.6) + (hasSkillsSection ? 40 : 10)));
-
   const score = Math.round((keywordMatchPct + professionalScore + experienceScore + skillsScore) / 4);
-  
   const level = score < 50 ? 'Low Match' : score <= 80 ? 'Good Match' : 'High Match';
-  
   let quickImprovement = 'Add more job-specific keywords naturally into your Summary, Skills, and Experience sections.';
   if (!hasMetrics) quickImprovement = 'Add measurable achievements using numbers, percentages, or clear results.';
-  
   const risks = [];
   if (!risks.length) risks.push('No major knockout risk detected from the visible text.');
-  
   return { score, professionalScore, keywordMatchPct, experienceScore, skillsScore, level, found, missing, previewMissing: missing.slice(0,3), missingCount: missing.length, quickImprovement, risks };
 }
 
@@ -235,8 +219,8 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
-function openPDFWindow(cv: any, title: string = 'Optimized CV') {
-  const parseText = (text: any) => {
+function openPDFWindow(cv, title = 'Optimized CV') {
+  const parseText = (text) => {
     if (!text) return '';
     let t = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     t = t.replace(/^#+\s*/gm, '');
@@ -244,6 +228,50 @@ function openPDFWindow(cv: any, title: string = 'Optimized CV') {
     t = t.replace(/\*(.*?)\*/g, '<i>$1</i>');
     return t;
   };
+
+  function formatExperienceForPDF(text) {
+    if (!text) return '';
+    const blocks = text.split(/\n\s*\n/);
+    return blocks.map(block => {
+      const lines = block.split('\n').filter(l => l.trim() !== '');
+      if (lines.length === 0) return '';
+      const headers = [];
+      const bullets = [];
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+          bullets.push(trimmed);
+        } else if (bullets.length === 0) {
+          headers.push(trimmed);
+        } else {
+          bullets.push('• ' + trimmed);
+        }
+      });
+      let blockHtml = '<div style="margin-bottom: 24px;">';
+      if (headers.length > 0) {
+        blockHtml += `<div style="font-weight: bold; color: #000; font-size: 14px; text-transform: uppercase;">${parseText(headers[0])}</div>`;
+        if (headers.length >= 2) {
+          let company = parseText(headers[1]);
+          let date = headers.length >= 3 ? parseText(headers[2]) : '';
+          blockHtml += `
+          <table style="width: 100%; border-collapse: collapse; margin-top: 2px; margin-bottom: 8px;">
+            <tr>
+              <td style="font-weight: bold; color: #000; font-size: 13px; text-align: left; padding: 0;">${company}</td>
+              <td style="font-weight: bold; color: #000; font-size: 13px; text-align: right; padding: 0; white-space: nowrap;">${date}</td>
+            </tr>
+          </table>`;
+        } else {
+          blockHtml = blockHtml.replace('uppercase;">', 'uppercase; margin-bottom: 8px;">');
+        }
+      }
+      bullets.forEach(bullet => {
+        const finalLine = bullet.startsWith('•') ? bullet : '• ' + bullet;
+        blockHtml += `<div style="margin-left: 14px; margin-bottom: 2px; font-weight: normal; color: #222; font-size: 13px; line-height: 1.4;">${parseText(finalLine)}</div>`;
+      });
+      blockHtml += '</div>';
+      return blockHtml;
+    }).join('');
+  }
 
   const html = `<!DOCTYPE html>
   <html><head><title>${parseText(title)}</title>
@@ -253,14 +281,15 @@ function openPDFWindow(cv: any, title: string = 'Optimized CV') {
     body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.5; padding: 10px; }
     h1 { text-align: center; font-size: 24px; margin: 0 0 6px; letter-spacing: 0.5px; text-transform: uppercase; }
     .contact { text-align: center; font-size: 11px; margin-bottom: 20px; color: #374151; }
-    h2 { font-size: 13px; border-bottom: 1.5px solid #111827; padding-bottom: 3px; margin: 16px 0 6px; letter-spacing: .5px; text-transform: uppercase; font-weight: bold; }
+    h2 { font-size: 13px; border-bottom: 1.5px solid #111827; padding-bottom: 3px; margin: 16px 0 8px; letter-spacing: .5px; text-transform: uppercase; font-weight: bold; }
     p { margin: 4px 0; font-size: 12px; white-space: pre-wrap; text-align: justify; }
     </style></head>
     <body>
     <h1>${parseText(cv.name)}</h1>
     <div class="contact">ADDRESS: ${parseText(cv.address)} | PHONE: ${parseText(cv.phone)} | E-MAIL: ${parseText(cv.email)} | LinkedIn: ${parseText(cv.linkedin)}</div>
     <h2>SUMMARY</h2><p>${parseText(cv.summary)}</p>
-    <h2>PROFESSIONAL EXPERIENCE</h2><p>${parseText(cv.experience)}</p>
+    <h2>PROFESSIONAL EXPERIENCE</h2>
+    <div>${formatExperienceForPDF(cv.experience)}</div>
     <h2>EDUCATION</h2><p>${parseText(cv.education)}</p>
     <h2>SKILLS</h2><p><b>Soft Skills:</b> ${parseText(cv.softSkills)}</p><p><b>Technical Skills:</b> ${parseText(cv.technicalSkills)}</p>
     <h2>INTERNSHIP AND COURSES</h2><p>${parseText(cv.internshipCourses)}</p>
@@ -296,7 +325,6 @@ function AnimatedBar({ label, value, color, delay = 0 }) {
     }, delay);
     return () => clearTimeout(timer);
   }, [value, delay]);
-
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
@@ -437,7 +465,6 @@ function Home({ setPage }) {
 }
 
 // ─── Optimization Page ────────────────────────────────────────────────────────
-// ─── Optimization Page ────────────────────────────────────────────────────────
 function OptimizationPage() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -481,8 +508,7 @@ function OptimizationPage() {
     const file = event.target.files?.[0];
     if (!file) return;
     const fileName = file.name.toLowerCase();
-    setMessage('Reading file...');
-    setError('');
+    setMessage('Reading file...'); setError('');
     try {
       if (fileName.endsWith('.txt')) { setResume(await file.text()); setMessage('TXT file loaded successfully.'); return; }
       if (fileName.endsWith('.pdf')) {
@@ -521,9 +547,6 @@ function OptimizationPage() {
       const { result: aiText, parsed: aiParsed } = await callAI({ service:'optimization', resume, jobDescription });
       const parsed = parseAICV(aiParsed || aiText);
       const analysis = analyzeResume(resume, jobDescription);
-      
-      // ✅ تم حذف السطر اللي كان بيثبت السكور هنا عشان الرقم يفضل ديناميكي بناءً على الكلمات المفتاحية
-      
       if (parsed.suggestedAchievements && parsed.suggestedAchievements.length > 0) {
         setSuggestedAchievements(parsed.suggestedAchievements);
         setSelectedAchievements([]);
@@ -595,7 +618,6 @@ function OptimizationPage() {
               <div style={{ fontSize: '42px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>{result.score}</div>
               <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>Match Score</div>
             </div>
-
             <div style={{ flex: '1', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {[
                 { label: 'Keyword Match', score: result.keywordMatchPct },
@@ -768,7 +790,7 @@ function OptimizationPage() {
               <p style={{color:'#94a3b8',fontSize:13}}>{paidCV.scoreJustification}</p>
             </div>
           )}
-          
+
           {suggestedAchievements.length > 0 && (
             <div style={{marginBottom:24,padding:16,background:'rgba(37,99,235,0.08)',border:'1px solid rgba(37,99,235,0.25)',borderRadius:12}}>
               <p style={{fontWeight:700,fontSize:15,color:'#93c5fd',marginBottom:4}}>⭐ Suggested Achievements</p>
@@ -801,16 +823,35 @@ function OptimizationPage() {
                 );
               })}
               {selectedAchievements.length > 0 && (
-                <button style={{marginTop:8,background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer',fontSize:14}}
-                  onClick={() => {
-                    const added = selectedAchievements.map(a => '• ' + (a.customText || a.text)).join('\n');
-                    updatePaidCVField('experience', (paidCV.experience || '') + '\n\n' + added);
-                    setSuggestedAchievements([]);
-                    setSelectedAchievements([]);
-                  }}
-                >
-                  ✓ Add Selected to CV Experience
-                </button>
+                <div style={{marginTop:14,padding:14,background:'rgba(15,23,42,0.6)',borderRadius:10,border:'1px solid #1e293b'}}>
+                  <label style={{fontSize:13,color:'#94a3b8',display:'block',marginBottom:8,fontWeight:700}}>
+                    Add achievements to this job:
+                  </label>
+                  <select
+                    id="jobTargetSelect"
+                    style={{width:'100%',padding:'10px',borderRadius:'8px',background:'#0f172a',color:'#f8fafc',border:'1px solid #334155',marginBottom:14,fontSize:13,outline:'none'}}
+                  >
+                    {(paidCV.experience || '').split(/\n\s*\n/).filter(b => b.trim()).map((block, idx) => {
+                      const title = block.split('\n').find(l => l.trim())?.substring(0, 60) || `Job ${idx + 1}`;
+                      return <option key={idx} value={idx}>{title} {idx === 0 ? '(Latest)' : ''}</option>;
+                    })}
+                  </select>
+                  <button style={{width:'100%',background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'12px 20px',fontWeight:700,cursor:'pointer',fontSize:14,transition:'0.2s'}}
+                    onClick={() => {
+                      const added = selectedAchievements.map(a => '• ' + (a.customText || a.text)).join('\n');
+                      const blocks = (paidCV.experience || '').split(/\n\s*\n/).filter(b => b.trim());
+                      if (blocks.length === 0) blocks.push('');
+                      const selectEl = document.getElementById('jobTargetSelect');
+                      const target = selectEl ? Number(selectEl.value) : 0;
+                      blocks[target] = blocks[target].trimEnd() + '\n' + added;
+                      updatePaidCVField('experience', blocks.join('\n\n'));
+                      setSuggestedAchievements([]);
+                      setSelectedAchievements([]);
+                    }}
+                  >
+                    Add Selected to CV Experience
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -875,7 +916,7 @@ function BuilderWizard() {
       return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
-async function generatePaidBuilderCV() {
+  async function generatePaidBuilderCV() {
     if (getUsageCount('builder')>=3) { alert('You have used all 3 CV outputs for this payment session.'); return; }
     setIsGenerating(true);
     try {
@@ -898,7 +939,7 @@ async function generatePaidBuilderCV() {
       };
       setBuiltCV(cv);
       setRemainingOutputs(Math.max(0,3-increaseUsageCount('builder')));
-    } catch(e: any) {
+    } catch(e) {
       alert(e.message || 'AI generation failed. Please try again.');
     } finally { setIsGenerating(false); }
   }
@@ -1044,7 +1085,7 @@ function LinkedInPage() {
   function generateHeadlinePreview() {
     setHeadline(`${targetRole||'Target Role'} | ${experience||'relevant experience'} | Open to New Opportunities`);
   }
-async function generateFullLinkedInOptimization() {
+  async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
       const { parsed: aiParsed } = await callAI({ service:'linkedin', targetRole, experience });
@@ -1055,7 +1096,7 @@ async function generateFullLinkedInOptimization() {
         skills: p.skills || `${targetRole}, Communication, Problem Solving, Teamwork`,
         recruiterKeywords: p.recruiterKeywords || `${targetRole}, ${experience}`,
       });
-    } catch(e: any) {
+    } catch(e) {
       alert(e.message || 'AI generation failed. Please try again.');
     } finally { setIsGeneratingLinkedIn(false); }
   }
