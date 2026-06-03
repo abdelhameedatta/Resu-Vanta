@@ -917,31 +917,66 @@ function BuilderWizard() {
     }).join('\n\n');
   }
   async function generatePaidBuilderCV() {
-    if (getUsageCount('builder')>=3) { alert('You have used all 3 CV outputs for this payment session.'); return; }
+    if (getUsageCount('builder') >= 3) { 
+      alert('You have used all 3 CV outputs for this payment session.'); 
+      return; 
+    }
+    
+    if (!builder.targetJob || builder.targetJob.trim() === '') { 
+      alert('Please enter a Target Job in Step 1 to generate correct skills.'); 
+      setStep(1);
+      return; 
+    }
+
     setIsGenerating(true);
     try {
-      const builderData = `Target Job: ${builder.targetJob}\nJob Description: ${builder.jobDescription}\nName: ${builder.name}\nAddress: ${builder.address}\nPhone: ${builder.phone}\nEmail: ${builder.email}\nLinkedIn: ${builder.linkedin}\nDegree: ${builder.degree}\nUniversity: ${builder.university}\nGraduation Year: ${builder.graduationYear}\nCountry: ${builder.educationCountry}\nExperience: ${builder.experiences.map(e=>`${e.jobTitle} at ${e.company} (${e.startDate}-${e.endDate}): ${e.responsibilities} | Achievements: ${e.achievements}`).join(' | ')}\nSoft Skills: ${builder.softSkills}\nTechnical Skills: ${builder.technicalSkills}\nInternships: ${builder.internships}\nCourses: ${builder.courses}\nLanguages: ${builder.languages}\nLicenses: ${builder.licenses}\nAdditional: ${builder.additionalInfo}`;
-      const { parsed: aiParsed } = await callAI({ service:'builder', builderData });
-      const p = aiParsed || {};
+      const payload = {
+        service: 'builder',
+        targetJob: builder.targetJob,
+        jobDescription: builder.jobDescription,
+        builderData: `Name: ${builder.name}\nAddress: ${builder.address}\nDegree: ${builder.degree}\nExperience:\n${formatExperience()}`
+      };
+      
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to generate CV');
+      }
+
+      const { parsed: p } = await response.json();
+
+      if (p.suggestedSoftSkills) setSuggestedSoftSkills(p.suggestedSoftSkills);
+      if (p.suggestedTechnicalSkills) setSuggestedTechnicalSkills(p.suggestedTechnicalSkills);
+
       const cv = {
-        name: builder.name||'NAME', address: builder.address||'Not provided',
-        phone: builder.phone||'Not provided', email: builder.email||'Not provided',
-        linkedin: builder.linkedin||'Not provided',
-        summary: p.summary || `Motivated ${builder.targetJob} professional with experience in ${builder.technicalSkills}.`,
+        name: p.name || builder.name || 'NAME', 
+        address: p.address || builder.address || 'Not provided',
+        phone: p.phone || builder.phone || 'Not provided', 
+        email: p.email || builder.email || 'Not provided',
+        linkedin: p.linkedin || builder.linkedin || 'Not provided',
+        summary: p.summary || `Motivated ${builder.targetJob} professional.`,
         experience: p.experience || formatExperience(),
         education: p.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
-        softSkills: p.softSkills || builder.softSkills || 'Communication, teamwork, problem solving',
-        technicalSkills: p.technicalSkills || builder.technicalSkills || 'Not provided',
+        softSkills: p.softSkills || builder.softSkills,
+        technicalSkills: p.technicalSkills || builder.technicalSkills,
         internshipCourses: p.internshipCourses || `${builder.internships} ${builder.courses}`,
         additionalInfo: p.additionalInfo || builder.additionalInfo || '',
         language: p.language || builder.languages || 'Not provided',
         license: p.license || builder.licenses || 'Not provided',
       };
+      
       setBuiltCV(cv);
-      setRemainingOutputs(Math.max(0,3-increaseUsageCount('builder')));
+      setRemainingOutputs(Math.max(0, 3 - increaseUsageCount('builder')));
     } catch(e) {
       alert(e.message || 'AI generation failed. Please try again.');
-    } finally { setIsGenerating(false); }
+    } finally { 
+      setIsGenerating(false); 
+    }
   }
 
   return (
