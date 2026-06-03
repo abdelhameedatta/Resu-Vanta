@@ -2,13 +2,49 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { service, resume, jobDescription } = await req.json();
+    const body = await req.json();
+    const { service, resume, jobDescription, targetJob, builderData } = body;
 
-    if (!resume || !jobDescription) {
-      return NextResponse.json({ error: 'Missing resume or job description text' }, { status: 400 });
-    }
+    let systemPrompt = '';
+    let userPrompt = '';
 
-    const systemPrompt = `You are an expert ATS Resume Optimization Specialist and Professional CV Writer.
+    if (service === 'builder') {
+      if (!targetJob || !builderData) {
+        return NextResponse.json({ error: 'Missing target job or builder data' }, { status: 400 });
+      }
+
+      systemPrompt = `You are an Expert ATS Resume Writer & Optimizer.
+I will provide you with user data, their 'Target Job', and a 'Job Description'.
+
+INSTRUCTIONS:
+1. REWRITE and OPTIMIZE the user's experience and summary to strongly align with the Target Job and heavily integrate keywords from the Job Description. Use professional action verbs.
+2. Generate an array of 5-8 highly relevant "suggestedSoftSkills" based on the Job Description.
+3. Generate an array of 5-8 highly relevant "suggestedTechnicalSkills" based on the Job Description.
+
+Return strictly this JSON format:
+{
+  "name": "string",
+  "summary": "string",
+  "experience": "string",
+  "education": "string",
+  "softSkills": "string",
+  "technicalSkills": "string",
+  "internshipCourses": "string",
+  "additionalInfo": "string",
+  "language": "string",
+  "license": "string",
+  "suggestedSoftSkills": ["skill1", "skill2", "skill3"],
+  "suggestedTechnicalSkills": ["skill1", "skill2", "skill3"]
+}`;
+
+      userPrompt = `Target Job: ${targetJob}\nJob Description:\n${jobDescription || ''}\n\nUser Data:\n${builderData}`;
+
+    } else {
+      if (!resume || !jobDescription) {
+        return NextResponse.json({ error: 'Missing resume or job description text' }, { status: 400 });
+      }
+
+      systemPrompt = `You are an expert ATS Resume Optimization Specialist and Professional CV Writer.
 
 YOUR MISSION: Transform the candidate's CV into a polished, professional document that reads naturally and compellingly — NOT a keyword-stuffed list.
 
@@ -55,7 +91,8 @@ You must output ONLY a valid JSON object. No text before or after. Follow this e
   ]
 }`;
 
-    const userPrompt = `Candidate CV:\n${resume}\n\nJob Description:\n${jobDescription}`;
+      userPrompt = `Candidate CV:\n${resume}\n\nJob Description:\n${jobDescription}`;
+    }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
