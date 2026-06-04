@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import StripeWrapper from './components/StripeWrapper';
+import ContactSection from './components/ContactSection';
 
 const PRICES = {
   optimization: '$7.99',
@@ -1523,6 +1524,7 @@ export default function App() {
         </div>
       </header>
       {renderPage()}
+      <ContactSection />
       <footer>
         <p>ResuVanta provides automated CV optimization support only. It does not guarantee interviews, job offers, or hiring decisions.</p>
       </footer>
