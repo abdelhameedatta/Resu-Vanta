@@ -916,13 +916,23 @@ function BuilderWizard() {
   function addExperience() { setBuilder(old=>({...old,experiences:[...old.experiences,{jobTitle:'',company:'',location:'',startDate:'',endDate:'',responsibilities:'',achievements:''}]})); }
   function removeExperience(index) { if (builder.experiences.length===1) return; setBuilder(old=>({...old,experiences:old.experiences.filter((_,i)=>i!==index)})); }
   function formatExperience() {
-    return builder.experiences.map(exp=>{
-      const r=exp.responsibilities.split('\n').map(x=>x.trim()).filter(Boolean).map(x=>`• ${x}`).join('\n')||'• Add main responsibilities here.';
-      const a=exp.achievements.split('\n').map(x=>x.trim()).filter(Boolean).map(x=>`• ${x}`).join('\n')||'';
-      return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
+    const sorted = [...builder.experiences].sort((a, b) => {
+      const isCurrentA = !a.endDate || a.endDate.toLowerCase().includes('present') || a.endDate.toLowerCase().includes('current');
+      const isCurrentB = !b.endDate || b.endDate.toLowerCase().includes('present') || b.endDate.toLowerCase().includes('current');
+      if (isCurrentA && !isCurrentB) return -1;
+      if (!isCurrentA && isCurrentB) return 1;
+      const dateA = new Date(a.endDate || a.startDate || '');
+      const dateB = new Date(b.endDate || b.startDate || '');
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    return sorted.map(exp => {
+      const r = exp.responsibilities.split('\n').map(x => x.trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '• Add main responsibilities here.';
+      const a = exp.achievements.split('\n').map(x => x.trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '';
+      return `${exp.jobTitle || 'Job Title'}\n${exp.company || 'Company Name'} | ${exp.location || 'Location'} | ${exp.startDate || 'Start Date'} - ${exp.endDate || 'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
-
+  
   async function generatePaidBuilderCV() {
     if (getUsageCount('builder') >= 3) { 
       alert('You have used all 3 CV outputs for this payment session.');
