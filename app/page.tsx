@@ -1188,6 +1188,7 @@ function LinkedInPage() {
   function generateHeadlinePreview() {
     setHeadline(`${targetRole||'Target Role'} | ${experience||'relevant experience'} | Open to New Opportunities`);
   }
+  
   async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
@@ -1216,7 +1217,8 @@ function LinkedInPage() {
       <div className="button-row">
         <button onClick={generateHeadlinePreview}>Generate Free Headline Preview</button>
       </div>
-      {headline&&<div className="preview-box single">
+      
+      {headline && <div className="preview-box single">
         <h3>Free Headline Preview</h3>
         <p>{headline}</p>
         <div className="locked-card">
@@ -1248,13 +1250,63 @@ function LinkedInPage() {
           )}
         </div>
       </div>}
-      {fullLinkedInOutput&&<div className="paid-output">
+
+      {fullLinkedInOutput && <div className="paid-output">
         <h3>Full LinkedIn Optimization</h3>
-        <h4>Professional Headline</h4><p>{fullLinkedInOutput.headline}</p>
-        <h4>About Section</h4><p>{fullLinkedInOutput.about}</p>
-        <h4>Skills Keywords</h4><p>{fullLinkedInOutput.skills}</p>
-        <h4>Recruiter Search Keywords</h4><p>{fullLinkedInOutput.recruiterKeywords}</p>
-        <button onClick={()=>{clearServiceSession('linkedin'); setPaymentConfirmed(false); setFullLinkedInOutput(null);}}>
+        <div style={{marginBottom: '20px'}}>
+          <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>Professional Headline</h4>
+          <p style={{fontSize: '15px', color: '#f8fafc', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b'}}>{fullLinkedInOutput.headline}</p>
+        </div>
+        
+        <div style={{marginBottom: '20px'}}>
+          <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>About Section</h4>
+          <p style={{fontSize: '14px', color: '#f8fafc', background: '#0f172a', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b', whiteSpace: 'pre-wrap', lineHeight: '1.6'}}>{fullLinkedInOutput.about}</p>
+        </div>
+
+        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px'}}>
+          <div>
+            <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>Skills Keywords</h4>
+            <p style={{fontSize: '13px', color: '#cbd5e1'}}>{fullLinkedInOutput.skills}</p>
+          </div>
+          <div>
+            <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>Recruiter Search Keywords</h4>
+            <p style={{fontSize: '13px', color: '#cbd5e1'}}>{fullLinkedInOutput.recruiterKeywords}</p>
+          </div>
+        </div>
+
+        {/* ─── اضافات التوثيق والتريكات وترشيحات الذكاء الاصطناعي ─── */}
+        <div style={{marginTop: '32px', background: 'linear-gradient(145deg, #101827 0%, #0f172a 100%)', padding: '24px', borderRadius: '16px', border: '1px solid #1e293b'}}>
+          <h3 style={{color: '#f8fafc', marginBottom: '20px', fontSize: '18px'}}>🚀 Bonus: Expert LinkedIn Tips & AI Tools</h3>
+
+          <div style={{marginBottom: '20px'}}>
+            <h4 style={{color: '#3b82f6', marginBottom: '8px', fontSize: '15px'}}>1. How to Verify Your Account (Get the Badge)</h4>
+            <ul style={{fontSize: '13px', color: '#cbd5e1', paddingLeft: '20px', lineHeight: '1.6', margin: 0}}>
+              <li>Go to <b>Settings & Privacy</b> &gt; <b>Account Preferences</b> &gt; <b>Verifications</b>.</li>
+              <li>Depending on your country, choose your verification method (Clear, Persona with Passport/NFC, or Work Email).</li>
+              <li>Follow the prompts to get the trusted verification checkmark next to your name.</li>
+            </ul>
+          </div>
+
+          <div style={{marginBottom: '20px'}}>
+            <h4 style={{color: '#10b981', marginBottom: '8px', fontSize: '15px'}}>2. Profile Visibility & Formatting Tricks</h4>
+            <ul style={{fontSize: '13px', color: '#cbd5e1', paddingLeft: '20px', lineHeight: '1.6', margin: 0}}>
+              <li><b>Custom URL:</b> Edit your public profile URL to be just your name (e.g., <i>linkedin.com/in/yourname</i>) without random numbers.</li>
+              <li><b>Featured Section:</b> Pin your optimized CV, portfolio, or top posts directly below your About section.</li>
+              <li><b>Open to Work:</b> Turn this on for "Recruiters Only" so you appear in more searches without showing the green badge publicly on your picture.</li>
+            </ul>
+          </div>
+
+          <div style={{marginBottom: '10px'}}>
+            <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '15px'}}>3. AI Tools for a Professional Profile Picture & Cover</h4>
+            <ul style={{fontSize: '13px', color: '#cbd5e1', paddingLeft: '20px', lineHeight: '1.6', margin: 0}}>
+              <li><b>Profile Picture (Free):</b> Use <a href="https://pfpmaker.com/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>PFPMaker.com</a> to instantly remove your background and add a clean, studio-like color.</li>
+              <li><b>Profile Picture (Premium):</b> Tools like <a href="https://www.aragon.ai/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>Aragon AI</a> turn normal selfies into high-quality corporate headshots.</li>
+              <li><b>Unique Cover Photo:</b> Go to <a href="https://www.canva.com/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>Canva.com</a> and search for "LinkedIn Banner". Pick a template that matches your industry and target role.</li>
+            </ul>
+          </div>
+        </div>
+
+        <button style={{marginTop: '24px'}} onClick={()=>{clearServiceSession('linkedin'); setPaymentConfirmed(false); setFullLinkedInOutput(null);}}>
           Finish and Clear Temporary Data
         </button>
       </div>}
