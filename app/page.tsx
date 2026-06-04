@@ -873,10 +873,6 @@ function OptimizationPage() {
 
 // ─── Builder Wizard ───────────────────────────────────────────────────────────
 function BuilderWizard() {
-  const [suggestedSoftSkills, setSuggestedSoftSkills] = useState([]);
-  const [selectedSoftSkills, setSelectedSoftSkills] = useState([]);
-  const [suggestedTechnicalSkills, setSuggestedTechnicalSkills] = useState([]);
-  const [selectedTechnicalSkills, setSelectedTechnicalSkills] = useState([]);
   const [step, setStep] = useState(1);
   const [builtCV, setBuiltCV] = useState(null);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
@@ -890,6 +886,12 @@ function BuilderWizard() {
     softSkills:'',technicalSkills:'',internships:'',courses:'',languages:'',licenses:'',additionalInfo:'',
   });
   const totalSteps = 7;
+
+  // Added Skills States Here
+  const [suggestedSoftSkills, setSuggestedSoftSkills] = useState([]);
+  const [selectedSoftSkills, setSelectedSoftSkills] = useState([]);
+  const [suggestedTechnicalSkills, setSuggestedTechnicalSkills] = useState([]);
+  const [selectedTechnicalSkills, setSelectedTechnicalSkills] = useState([]);
 
   useEffect(()=>{
     const params = new URLSearchParams(window.location.search);
@@ -920,14 +922,15 @@ function BuilderWizard() {
       return `${exp.jobTitle||'Job Title'}\n${exp.company||'Company Name'} | ${exp.location||'Location'} | ${exp.startDate||'Start Date'} - ${exp.endDate||'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
+
   async function generatePaidBuilderCV() {
     if (getUsageCount('builder') >= 3) { 
-      alert('You have used all 3 CV outputs for this payment session.'); 
+      alert('You have used all 3 CV outputs for this payment session.');
       return; 
     }
     
     if (!builder.targetJob || builder.targetJob.trim() === '') { 
-      alert('Please enter a Target Job in Step 1 to generate correct skills.'); 
+      alert('Please enter a Target Job in Step 1 to generate correct skills.');
       setStep(1);
       return; 
     }
@@ -954,8 +957,8 @@ function BuilderWizard() {
 
       const { parsed: p } = await response.json();
 
-      if (p.suggestedSoftSkills) setSuggestedSoftSkills(p.suggestedSoftSkills);
-      if (p.suggestedTechnicalSkills) setSuggestedTechnicalSkills(p.suggestedTechnicalSkills);
+      if (p?.suggestedSoftSkills) setSuggestedSoftSkills(p.suggestedSoftSkills);
+      if (p?.suggestedTechnicalSkills) setSuggestedTechnicalSkills(p.suggestedTechnicalSkills);
 
       const cv = {
         name: p.name || builder.name || 'NAME', 
@@ -974,76 +977,14 @@ function BuilderWizard() {
         license: p.license || builder.licenses || 'Not provided',
       };
       
-      {builtCV && (
-        <div className="built-output" style={{marginTop: 32}}>
-          <h3>Review & Customize Your Optimized CV</h3>
-          
-          {suggestedSoftSkills && suggestedSoftSkills.length > 0 && (
-            <div style={{marginBottom: 16, padding: 16, background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b'}}>
-              <p style={{fontWeight: 700, color: '#f8fafc', marginBottom: 12}}>⭐ Suggested Soft Skills (Based on Job Description)</p>
-              <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
-                {suggestedSoftSkills.map((skill, i) => (
-                  <label key={i} style={{background: selectedSoftSkills.includes(skill) ? '#2563eb' : '#1e293b', color: '#fff', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
-                    <input type="checkbox" style={{display: 'none'}} checked={selectedSoftSkills.includes(skill)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedSoftSkills([...selectedSoftSkills, skill]);
-                        else setSelectedSoftSkills(selectedSoftSkills.filter(s => s !== skill));
-                      }}
-                    />
-                    {skill}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {suggestedTechnicalSkills && suggestedTechnicalSkills.length > 0 && (
-            <div style={{marginBottom: 16, padding: 16, background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b'}}>
-              <p style={{fontWeight: 700, color: '#f8fafc', marginBottom: 12}}>⚙️ Suggested Technical Skills</p>
-              <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
-                {suggestedTechnicalSkills.map((skill, i) => (
-                  <label key={i} style={{background: selectedTechnicalSkills.includes(skill) ? '#10b981' : '#1e293b', color: '#fff', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
-                    <input type="checkbox" style={{display: 'none'}} checked={selectedTechnicalSkills.includes(skill)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedTechnicalSkills([...selectedTechnicalSkills, skill]);
-                        else setSelectedTechnicalSkills(selectedTechnicalSkills.filter(s => s !== skill));
-                      }}
-                    />
-                    {skill}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(selectedSoftSkills.length > 0 || selectedTechnicalSkills.length > 0) && (
-            <button style={{marginBottom: 24, background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer'}} 
-              onClick={() => {
-                let currentSoft = builtCV.softSkills ? builtCV.softSkills.split(',').map(s=>s.trim()) : [];
-                let currentTech = builtCV.technicalSkills ? builtCV.technicalSkills.split(',').map(s=>s.trim()) : [];
-                
-                const newSoft = [...new Set([...currentSoft, ...selectedSoftSkills])].filter(Boolean).join(' | ');
-                const newTech = [...new Set([...currentTech, ...selectedTechnicalSkills])].filter(Boolean).join(' | ');
-                
-                setBuiltCV({...builtCV, softSkills: newSoft, technicalSkills: newTech});
-                
-                setSuggestedSoftSkills([]);
-                setSuggestedTechnicalSkills([]);
-                setSelectedSoftSkills([]);
-                setSelectedTechnicalSkills([]);
-              }}>
-              ✓ Add Selected Skills to CV
-            </button>
-          )}
-
-          <CVTemplatePreview cv={builtCV}/>
-          <button onClick={()=>{
-            openPDFWindow(builtCV,'Built CV');
-            clearServiceSession('builder');
-            setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
-          }}>Download PDF</button>
-        </div>
-      )}
+      setBuiltCV(cv);
+      setRemainingOutputs(Math.max(0, 3 - increaseUsageCount('builder')));
+    } catch(e) {
+      alert(e.message || 'AI generation failed. Please try again.');
+    } finally { 
+      setIsGenerating(false); 
+    }
+  }
 
   return (
     <div className="builder-wizard">
@@ -1125,21 +1066,82 @@ function BuilderWizard() {
             />
           ) : (
             <button onClick={() => setShowBuilderPayment(true)}>
-              Unlock Resume Package — {PRICES.builder}
+              Unlock Resume Package
             </button>
           )}
         </>}
       </div>
 
-      {builtCV&&<div className="built-output">
-        <h3>Your CV Preview</h3>
-        <CVTemplatePreview cv={builtCV}/>
-        <button onClick={()=>{
-          openPDFWindow(builtCV,'Built CV');
-          clearServiceSession('builder');
-          setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
-        }}>Download PDF</button>
-      </div>}
+      {builtCV && (
+        <div className="built-output" style={{marginTop: 32}}>
+          <h3>Review & Customize Your Optimized CV</h3>
+          
+          {suggestedSoftSkills && suggestedSoftSkills.length > 0 && (
+            <div style={{marginBottom: 16, padding: 16, background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b'}}>
+              <p style={{fontWeight: 700, color: '#f8fafc', marginBottom: 12}}>⭐ Suggested Soft Skills (Based on Job Description)</p>
+              <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
+                {suggestedSoftSkills.map((skill, i) => (
+                  <label key={i} style={{background: selectedSoftSkills.includes(skill) ? '#2563eb' : '#1e293b', color: '#fff', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
+                    <input type="checkbox" style={{display: 'none'}} checked={selectedSoftSkills.includes(skill)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedSoftSkills([...selectedSoftSkills, skill]);
+                        else setSelectedSoftSkills(selectedSoftSkills.filter(s => s !== skill));
+                      }}
+                    />
+                    {skill}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {suggestedTechnicalSkills && suggestedTechnicalSkills.length > 0 && (
+            <div style={{marginBottom: 16, padding: 16, background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b'}}>
+              <p style={{fontWeight: 700, color: '#f8fafc', marginBottom: 12}}>⚙️ Suggested Technical Skills</p>
+              <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
+                {suggestedTechnicalSkills.map((skill, i) => (
+                  <label key={i} style={{background: selectedTechnicalSkills.includes(skill) ? '#10b981' : '#1e293b', color: '#fff', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
+                    <input type="checkbox" style={{display: 'none'}} checked={selectedTechnicalSkills.includes(skill)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedTechnicalSkills([...selectedTechnicalSkills, skill]);
+                        else setSelectedTechnicalSkills(selectedTechnicalSkills.filter(s => s !== skill));
+                      }}
+                    />
+                    {skill}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(selectedSoftSkills.length > 0 || selectedTechnicalSkills.length > 0) && (
+            <button style={{marginBottom: 24, background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer'}} 
+              onClick={() => {
+                let currentSoft = builtCV.softSkills ? builtCV.softSkills.split(',').map(s=>s.trim()) : [];
+                let currentTech = builtCV.technicalSkills ? builtCV.technicalSkills.split(',').map(s=>s.trim()) : [];
+                
+                const newSoft = [...new Set([...currentSoft, ...selectedSoftSkills])].filter(Boolean).join(' | ');
+                const newTech = [...new Set([...currentTech, ...selectedTechnicalSkills])].filter(Boolean).join(' | ');
+                
+                setBuiltCV({...builtCV, softSkills: newSoft, technicalSkills: newTech});
+                
+                setSuggestedSoftSkills([]);
+                setSuggestedTechnicalSkills([]);
+                setSelectedSoftSkills([]);
+                setSelectedTechnicalSkills([]);
+              }}>
+              ✓ Add Selected Skills to CV
+            </button>
+          )}
+
+          <CVTemplatePreview cv={builtCV}/>
+          <button onClick={()=>{
+            openPDFWindow(builtCV,'Built CV');
+            clearServiceSession('builder');
+            setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
+          }}>Download PDF</button>
+        </div>
+      )}
     </div>
   );
 }
