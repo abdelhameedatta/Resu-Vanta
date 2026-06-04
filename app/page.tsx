@@ -1165,12 +1165,14 @@ function BuilderPage() {
 function LinkedInPage() {
   const [targetRole, setTargetRole] = useState('');
   const [cvFile, setCvFile] = useState(null);
-  const [cvText, setCvText] = useState(''); // يحتفظ بالنص المستخرج أو اسم الملف لإرساله للـ AI
+  const [cvText, setCvText] = useState('');
   const [headline, setHeadline] = useState('');
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [fullLinkedInOutput, setFullLinkedInOutput] = useState(null);
   const [isGeneratingLinkedIn, setIsGeneratingLinkedIn] = useState(false);
   const [showLinkedInPayment, setShowLinkedInPayment] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const [fileLoading, setFileLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1186,20 +1188,56 @@ function LinkedInPage() {
     }
   }, []);
 
-  // دالة التعامل مع رفع الملف
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setCvFile(file);
-      // هنا بنحفظ اسم الملف كإشارة، وفي الباك إند عندك الـ callAI هيتكفل بقراءة الملف أو النص
-      const fileIdentifier = `Uploaded CV: ${file.name}`;
-      setCvText(fileIdentifier);
-      
-      // حفظ البيانات مؤقتاً في الجلسة عشان لو حصل إعادة توجيه بعد الدفع
+    if (!file) return;
+    setFileError('');
+    setFileLoading(true);
+    setCvFile(file);
+    const fileName = file.name.toLowerCase();
+    try {
+      let extractedText = '';
+      if (fileName.endsWith('.txt')) {
+        extractedText = await file.text();
+      } else if (fileName.endsWith('.pdf')) {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const c = await page.getTextContent();
+          fullText += c.items.map(i => i.str).join(' ') + '\n\n';
+        }
+        if (!fullText.trim()) {
+          setFileError('Could not extract text from this PDF. It may be scanned as an image.');
+          setFileLoading(false);
+          return;
+        }
+        extractedText = fullText;
+      } else if (fileName.endsWith('.docx')) {
+        await loadScript('https://unpkg.com/mammoth/mammoth.browser.min.js');
+        const output = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        if (!output.value.trim()) {
+          setFileError('Could not extract text from this DOCX.');
+          setFileLoading(false);
+          return;
+        }
+        extractedText = output.value;
+      } else {
+        setFileError('Unsupported file type. Upload PDF, DOCX, or TXT.');
+        setFileLoading(false);
+        return;
+      }
+      setCvText(extractedText);
       sessionStorage.setItem('resuvanta_pending_linkedin', JSON.stringify({
         targetRole,
-        cvText: fileIdentifier
+        cvText: extractedText,
       }));
+    } catch {
+      setFileError('Could not read this file. Please try again.');
+    } finally {
+      setFileLoading(false);
     }
   };
 
@@ -1210,81 +1248,77 @@ function LinkedInPage() {
     }
     setHeadline(`${targetRole} | Specialized Professional | Open to New Opportunities`);
   }
-  
+
   async function generateFullLinkedInOptimization() {
     setIsGeneratingLinkedIn(true);
     try {
-      // بنبعت للـ AI الوظيفة المستهدفة والـ CV اللي اترفع بدل الخبرة اليدوية
-      const { parsed: aiParsed } = await callAI({ 
-        service: 'linkedin', 
-        targetRole, 
-        experience: cvText || 'Attached Professional CV' 
+      const { parsed: aiParsed } = await callAI({
+        service: 'linkedin',
+        targetRole,
+        resume: cvText || `Target Role: ${targetRole}`,
       });
-      
       const p = aiParsed || {};
       setFullLinkedInOutput({
         headline: p.headline || `${targetRole} | Professional Profile`,
-        about: p.about || `Results-focused professional specializing as ${targetRole}. Tailored profile based on verified expertise.`,
+        about: p.about || `Results-focused professional specializing as ${targetRole}.`,
         skills: p.skills || `${targetRole}, Leadership, Strategic Planning, Technical Skills`,
         recruiterKeywords: p.recruiterKeywords || `${targetRole}, Optimization, Industry Expert`,
       });
     } catch(e) {
       alert(e.message || 'AI generation failed. Please try again.');
-    } finally { setIsGeneratingLinkedIn(false); }
+    } finally {
+      setIsGeneratingLinkedIn(false);
+    }
   }
 
   return (
     <section className="section">
       <h2>LinkedIn Optimization — {PRICES.linkedin}</h2>
       <p className="muted">Free preview gives one headline only. Full LinkedIn optimization unlocks About section, experience rewrite, skills, and recruiter keywords based on your uploaded CV.</p>
-      
-      {/* تحديث الخطوات لتشمل رفع السي في */}
+
       <StepsStrip steps={['Enter target role', 'Upload Your CV', 'Get free headline', 'Pay & unlock full profile']}/>
-      
-      <div className="form" style={{display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '600px', margin: '0 auto'}}>
-        {/* خانة الوظيفة المستهدفة */}
-        <input 
-          placeholder="Target Role, e.g. Community Pharmacist" 
-          value={targetRole} 
+
+      <div className="form" style={{display:'flex', flexDirection:'column', gap:'16px', maxWidth:'600px', margin:'0 auto'}}>
+        <input
+          placeholder="Target Role, e.g. Community Pharmacist"
+          value={targetRole}
           onChange={e => setTargetRole(e.target.value)}
         />
-        
-        {/* صندوق رفع السي في الاحترافي */}
+
         <div style={{
-          border: '2px dashed #1e293b',
+          border: `2px dashed ${cvText ? '#10b981' : '#1e293b'}`,
           borderRadius: '8px',
           padding: '24px',
           textAlign: 'center',
           background: '#0f172a',
           cursor: 'pointer',
           position: 'relative',
-          transition: 'border-color 0.2s'
+          transition: 'border-color 0.2s',
         }}>
-          <input 
-            type="file" 
-            accept=".pdf,.doc,.docx" 
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt"
             onChange={handleFileUpload}
-            style={{
-              position: 'absolute',
-              top: 0, left: 0, width: '100%', height: '100%',
-              opacity: 0, cursor: 'pointer'
-            }}
+            style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', opacity:0, cursor:'pointer'}}
           />
-          <span style={{fontSize: '24px', display: 'block', marginBottom: '8px'}}>📁</span>
-          <p style={{color: '#f8fafc', margin: '0 0 4px 0', fontSize: '14px', fontWeight: 'bold'}}>
-            {cvFile ? 'CV Uploaded Successfully!' : 'Click or Drag to Upload Your CV'}
+          <span style={{fontSize:'24px', display:'block', marginBottom:'8px'}}>
+            {fileLoading ? '⏳' : cvText ? '✅' : '📁'}
+          </span>
+          <p style={{color:'#f8fafc', margin:'0 0 4px 0', fontSize:'14px', fontWeight:'bold'}}>
+            {fileLoading ? 'Reading file...' : cvText ? 'CV Uploaded Successfully!' : 'Click or Drag to Upload Your CV'}
           </p>
-          <p style={{color: '#94a3b8', margin: 0, fontSize: '12px'}}>
-            {cvFile ? `Selected file: ${cvFile.name}` : 'Supports PDF, DOCX (Max 5MB)'}
+          <p style={{color:'#94a3b8', margin:0, fontSize:'12px'}}>
+            {cvFile ? `Selected: ${cvFile.name}` : 'Supports PDF, DOCX, TXT (Max 5MB)'}
           </p>
         </div>
+
+        {fileError && <p className="error">{fileError}</p>}
       </div>
 
-      <div className="button-row" style={{marginTop: '20px'}}>
+      <div className="button-row" style={{marginTop:'20px'}}>
         <button onClick={generateHeadlinePreview}>Generate Free Headline Preview</button>
       </div>
-      
-      {/* المعاينة المجانية للعنوان */}
+
       {headline && <div className="preview-box single">
         <h3>Free Headline Preview</h3>
         <p>{headline}</p>
@@ -1306,7 +1340,7 @@ function LinkedInPage() {
             />
           ) : (
             <button onClick={() => {
-              if (!targetRole.trim() || !cvFile) {
+              if (!targetRole.trim() || !cvText) {
                 alert('Please enter your target role and upload your CV first.');
                 return;
               }
@@ -1318,56 +1352,54 @@ function LinkedInPage() {
         </div>
       </div>}
 
-      {/* المخرجات الكاملة بعد الدفع مع التريكات البونص */}
       {fullLinkedInOutput && <div className="paid-output">
         <h3>Full LinkedIn Optimization</h3>
-        
-        <div style={{marginBottom: '20px'}}>
-          <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>Professional Headline</h4>
-          <p style={{fontSize: '15px', color: '#f8fafc', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b'}}>{fullLinkedInOutput.headline}</p>
-        </div>
-        
-        <div style={{marginBottom: '20px'}}>
-          <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>About Section</h4>
-          <p style={{fontSize: '14px', color: '#f8fafc', background: '#0f172a', padding: '16px', borderRadius: '8px', border: '1px solid #1e293b', whiteSpace: 'pre-wrap', lineHeight: '1.6'}}>{fullLinkedInOutput.about}</p>
+
+        <div style={{marginBottom:'20px'}}>
+          <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>Professional Headline</h4>
+          <p style={{fontSize:'15px', color:'#f8fafc', background:'#0f172a', padding:'12px', borderRadius:'8px', border:'1px solid #1e293b'}}>{fullLinkedInOutput.headline}</p>
         </div>
 
-        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px'}}>
+        <div style={{marginBottom:'20px'}}>
+          <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>About Section</h4>
+          <p style={{fontSize:'14px', color:'#f8fafc', background:'#0f172a', padding:'16px', borderRadius:'8px', border:'1px solid #1e293b', whiteSpace:'pre-wrap', lineHeight:'1.6'}}>{fullLinkedInOutput.about}</p>
+        </div>
+
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'24px'}}>
           <div>
-            <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>Skills Keywords</h4>
-            <p style={{fontSize: '13px', color: '#cbd5e1', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b'}}>{fullLinkedInOutput.skills}</p>
+            <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>Skills Keywords</h4>
+            <p style={{fontSize:'13px', color:'#cbd5e1', background:'#0f172a', padding:'12px', borderRadius:'8px', border:'1px solid #1e293b'}}>{fullLinkedInOutput.skills}</p>
           </div>
           <div>
-            <h4 style={{color: '#94a3b8', borderBottom: '1px solid #24344f', paddingBottom: '8px', marginBottom: '12px'}}>Recruiter Search Keywords</h4>
-            <p style={{fontSize: '13px', color: '#cbd5e1', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b'}}>{fullLinkedInOutput.recruiterKeywords}</p>
+            <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>Recruiter Search Keywords</h4>
+            <p style={{fontSize:'13px', color:'#cbd5e1', background:'#0f172a', padding:'12px', borderRadius:'8px', border:'1px solid #1e293b'}}>{fullLinkedInOutput.recruiterKeywords}</p>
           </div>
         </div>
 
-        {/* ─── إضافات التوثيق والتريكات وترشيحات الذكاء الاصطناعي ─── */}
-        <div style={{marginTop: '32px', background: 'linear-gradient(145deg, #101827 0%, #0f172a 100%)', padding: '24px', borderRadius: '16px', border: '1px solid #1e293b', textAlign: 'left'}}>
-          <h3 style={{color: '#f8fafc', marginBottom: '20px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px'}}>🚀 Bonus: Expert LinkedIn Tips & AI Tools</h3>
+        <div style={{marginTop:'32px', background:'linear-gradient(145deg, #101827 0%, #0f172a 100%)', padding:'24px', borderRadius:'16px', border:'1px solid #1e293b', textAlign:'left'}}>
+          <h3 style={{color:'#f8fafc', marginBottom:'20px', fontSize:'18px', display:'flex', alignItems:'center', gap:'8px'}}>🚀 Bonus: Expert LinkedIn Tips & AI Tools</h3>
 
-          <div style={{marginBottom: '20px'}}>
-            <h4 style={{color: '#3b82f6', marginBottom: '8px', fontSize: '15px'}}>1. How to Verify Your Account (Get the Badge)</h4>
-            <ul style={{fontSize: '13px', color: '#cbd5e1', paddingLeft: '20px', lineHeight: '1.6', margin: 0}}>
+          <div style={{marginBottom:'20px'}}>
+            <h4 style={{color:'#3b82f6', marginBottom:'8px', fontSize:'15px'}}>1. How to Verify Your Account (Get the Badge)</h4>
+            <ul style={{fontSize:'13px', color:'#cbd5e1', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
               <li>Go to <b>Settings & Privacy</b> &gt; <b>Account Preferences</b> &gt; <b>Verifications</b>.</li>
               <li>Depending on your country, choose your verification method (Clear, Persona with Passport/NFC, or Work Email).</li>
               <li>Follow the prompts to get the trusted verification checkmark next to your name.</li>
             </ul>
           </div>
 
-          <div style={{marginBottom: '20px'}}>
-            <h4 style={{color: '#10b981', marginBottom: '8px', fontSize: '15px'}}>2. Profile Visibility & Formatting Tricks</h4>
-            <ul style={{fontSize: '13px', color: '#cbd5e1', paddingLeft: '20px', lineHeight: '1.6', margin: 0}}>
+          <div style={{marginBottom:'20px'}}>
+            <h4 style={{color:'#10b981', marginBottom:'8px', fontSize:'15px'}}>2. Profile Visibility & Formatting Tricks</h4>
+            <ul style={{fontSize:'13px', color:'#cbd5e1', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
               <li><b>Custom URL:</b> Edit your public profile URL to be just your name (e.g., <i>linkedin.com/in/yourname</i>) without random numbers.</li>
               <li><b>Featured Section:</b> Pin your optimized CV, portfolio, or top posts directly below your About section.</li>
               <li><b>Open to Work:</b> Turn this on for "Recruiters Only" so you appear in more searches without showing the green badge publicly on your picture.</li>
             </ul>
           </div>
 
-          <div style={{marginBottom: '10px'}}>
-            <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '15px'}}>3. AI Tools for a Professional Profile Picture & Cover</h4>
-            <ul style={{fontSize: '13px', color: '#cbd5e1', paddingLeft: '20px', lineHeight: '1.6', margin: 0}}>
+          <div style={{marginBottom:'10px'}}>
+            <h4 style={{color:'#8b5cf6', marginBottom:'8px', fontSize:'15px'}}>3. AI Tools for a Professional Profile Picture & Cover</h4>
+            <ul style={{fontSize:'13px', color:'#cbd5e1', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
               <li><b>Profile Picture (Free):</b> Use <a href="https://pfpmaker.com/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>PFPMaker.com</a> to instantly remove your background and add a clean, studio-like color.</li>
               <li><b>Profile Picture (Premium):</b> Tools like <a href="https://www.aragon.ai/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>Aragon AI</a> turn normal selfies into high-quality corporate headshots.</li>
               <li><b>Unique Cover Photo:</b> Go to <a href="https://www.canva.com/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>Canva.com</a> and search for "LinkedIn Banner". Pick a template that matches your industry and target role.</li>
@@ -1375,7 +1407,13 @@ function LinkedInPage() {
           </div>
         </div>
 
-        <button style={{marginTop: '24px'}} onClick={() => { clearServiceSession('linkedin'); setPaymentConfirmed(false); setFullLinkedInOutput(null); setCvFile(null); setCvText(''); }}>
+        <button style={{marginTop:'24px'}} onClick={() => {
+          clearServiceSession('linkedin');
+          setPaymentConfirmed(false);
+          setFullLinkedInOutput(null);
+          setCvFile(null);
+          setCvText('');
+        }}>
           Finish and Clear Temporary Data
         </button>
       </div>}
