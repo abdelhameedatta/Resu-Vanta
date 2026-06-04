@@ -692,7 +692,7 @@ function OptimizationPage() {
               <div>
                 <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
                 <button onClick={generatePaidOptimizationCV} disabled={loading}>
-                  {loading ? '⏳ AI is writing your CV...' : 'Generate Full Optimized CV'}
+                  {loading ? '⏳ writing your CV...' : 'Generate Full Optimized CV'}
                 </button>
               </div>
             ) : showPayment ? (
@@ -1061,7 +1061,7 @@ function BuilderWizard() {
         {step===totalSteps&&<>
           {paymentConfirmed ? (
             <>
-              <button onClick={generatePaidBuilderCV} disabled={isGenerating}>{isGenerating ? '⏳ AI is building your CV...' : 'Generate Paid CV Output'}</button>
+              <button onClick={generatePaidBuilderCV} disabled={isGenerating}>{isGenerating ? '⏳ building your CV...' : 'Generate Paid CV Output'}</button>
               <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
             </>
           ) : showBuilderPayment ? (
@@ -1337,7 +1337,7 @@ function LinkedInPage() {
           <p>Get your professional headline, About section, experience wording, skills list, and recruiter search keywords.</p>
           {paymentConfirmed ? (
             <button onClick={generateFullLinkedInOptimization} disabled={isGeneratingLinkedIn}>
-              {isGeneratingLinkedIn ? '⏳ AI is optimizing your profile...' : 'Generate Full LinkedIn Optimization'}
+              {isGeneratingLinkedIn ? '⏳ optimizing your profile...' : 'Generate Full LinkedIn Optimization'}
             </button>
           ) : showLinkedInPayment ? (
             <StripeWrapper
