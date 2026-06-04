@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { service, resume, jobDescription, targetJob, builderData } = body;
+    const { service, resume, jobDescription, targetJob, builderData, targetRole } = body;
 
     let systemPrompt = '';
     let userPrompt = '';
@@ -38,6 +38,32 @@ Return strictly this JSON format:
 }`;
 
       userPrompt = `Target Job: ${targetJob}\nJob Description:\n${jobDescription || ''}\n\nUser Data:\n${builderData}`;
+
+    } else if (service === 'linkedin') {
+      if (!targetRole) {
+        return NextResponse.json({ error: 'Missing target role' }, { status: 400 });
+      }
+
+      systemPrompt = `You are an expert LinkedIn Profile Optimization Specialist.
+
+YOUR MISSION: Create a compelling, keyword-rich LinkedIn profile that attracts recruiters and hiring managers.
+
+INSTRUCTIONS:
+1. Write a professional HEADLINE (max 220 characters) that includes the target role and key skills.
+2. Write an engaging ABOUT section (max 2000 characters) in first person, highlighting achievements and value proposition.
+3. List the top 10 most relevant SKILLS keywords for this role.
+4. Provide 15-20 RECRUITER KEYWORDS that recruiters use to search for this type of professional.
+
+You must output ONLY a valid JSON object. No text before or after:
+
+{
+  "headline": "Professional headline here",
+  "about": "Full about section here in first person",
+  "skills": "Skill1, Skill2, Skill3, Skill4, Skill5, Skill6, Skill7, Skill8, Skill9, Skill10",
+  "recruiterKeywords": "keyword1, keyword2, keyword3, keyword4, keyword5"
+}`;
+
+      userPrompt = `Target Role: ${targetRole}\n\nCandidate CV/Resume:\n${resume || 'No CV provided. Generate based on target role only.'}`;
 
     } else {
       if (!resume || !jobDescription) {
@@ -119,7 +145,6 @@ You must output ONLY a valid JSON object. No text before or after. Follow this e
 
     let parsed = null;
     try {
-      // Fix: Using RegExp constructor to avoid Vercel build error "Unterminated regexp literal"
       const clean = aiGeneratedText.replace(new RegExp('```json|```', 'g'), '').trim();
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
