@@ -7,8 +7,9 @@ export async function POST(req: Request) {
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.zoho.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
+      requireTLS: true,
       auth: {
         user: process.env.ZOHO_EMAIL,
         pass: process.env.ZOHO_PASSWORD,
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
     await transporter.sendMail({
       from: `"ResuVanta Contact" <${process.env.ZOHO_EMAIL}>`,
-      to: 'support@resuvanta.com',
+      to: process.env.ZOHO_EMAIL,
       replyTo: email,
       subject: `[ResuVanta] ${subject}`,
       html: `
