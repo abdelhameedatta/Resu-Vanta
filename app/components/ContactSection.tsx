@@ -9,11 +9,27 @@ export default function ContactSection() {
     subject: "",
     message: "",
   });
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Thank you! Your message has been sent to support@resuvanta.com.");
-    setFormData({ name: "", email: "", subject: "", message: "" });
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStatus('success');
+        setFormData({ name: "", email: "", subject: "", message: "" });
+      } else {
+        setStatus('error');
+      }
+    } catch {
+      setStatus('error');
+    }
   };
 
   return (
@@ -48,7 +64,6 @@ export default function ContactSection() {
               Have a question or feedback about ResuVanta? Send us a message and we will get back to you as soon as possible.
             </p>
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>📧</span>
@@ -59,7 +74,6 @@ export default function ContactSection() {
               <span style={{ fontSize: 13, color: '#cbd5e1' }}>www.resuvanta.com</span>
             </div>
           </div>
-
           <div style={{
             borderTop: '1px solid #1e293b',
             paddingTop: 16,
@@ -134,8 +148,20 @@ export default function ContactSection() {
               />
             </div>
 
+            {status === 'success' && (
+              <p style={{ color: '#4ade80', fontSize: 13, margin: 0 }}>
+                ✓ Message sent successfully!
+              </p>
+            )}
+            {status === 'error' && (
+              <p style={{ color: '#f87171', fontSize: 13, margin: 0 }}>
+                ✗ Failed to send. Please try again.
+              </p>
+            )}
+
             <button
               type="submit"
+              disabled={status === 'loading'}
               style={{
                 width: '100%',
                 padding: '11px 20px',
@@ -145,11 +171,12 @@ export default function ContactSection() {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: status === 'loading' ? 'not-allowed' : 'pointer',
                 marginTop: 4,
+                opacity: status === 'loading' ? 0.7 : 1,
               }}
             >
-              Send Message 🚀
+              {status === 'loading' ? '⏳ Sending...' : 'Send Message 🚀'}
             </button>
 
           </form>
