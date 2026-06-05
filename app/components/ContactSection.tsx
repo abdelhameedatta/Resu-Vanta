@@ -17,93 +17,141 @@ export default function ContactSection() {
   };
 
   return (
-    <section className="bg-gray-50 py-16 px-4 sm:px-6 lg:px-8 border-t border-gray-200">
-      <div className="max-w-7xl mx-auto lg:grid lg:grid-cols-5 lg:gap-8">
-        
-        {/* Contact Information Card */}
-        <div className="lg:col-span-2 bg-indigo-950 rounded-2xl p-8 text-white flex flex-col justify-between shadow-lg mb-8 lg:mb-0">
+    <section style={{
+      padding: '60px 24px',
+      borderTop: '1px solid #1e293b',
+      background: 'transparent',
+    }}>
+      <div style={{
+        maxWidth: 900,
+        margin: '0 auto',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1.6fr',
+        gap: 24,
+        alignItems: 'start',
+      }}>
+
+        {/* Contact Info Card */}
+        <div style={{
+          background: 'linear-gradient(145deg, #1e3a5f, #0f172a)',
+          borderRadius: 16,
+          padding: '32px 24px',
+          color: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+          border: '1px solid #1e293b',
+        }}>
           <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">Contact Us</h2>
-            <p className="mt-4 text-base text-indigo-200">
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 10px', color: '#f1f5f9' }}>Contact Us</h2>
+            <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
               Have a question or feedback about ResuVanta? Send us a message and we will get back to you as soon as possible.
             </p>
           </div>
-          
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center space-x-3">
-              <span className="text-xl">📧</span>
-              <span className="text-md font-medium text-indigo-100">support@resuvanta.com</span>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>📧</span>
+              <span style={{ fontSize: 13, color: '#cbd5e1' }}>support@resuvanta.com</span>
             </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-xl">🌐</span>
-              <span className="text-md font-medium text-indigo-100">www.resuvanta.com</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>🌐</span>
+              <span style={{ fontSize: 13, color: '#cbd5e1' }}>www.resuvanta.com</span>
             </div>
           </div>
-          
-          <div className="mt-8 text-xs text-indigo-300 border-t border-indigo-900 pt-4">
+
+          <div style={{
+            borderTop: '1px solid #1e293b',
+            paddingTop: 16,
+            fontSize: 11,
+            color: '#475569',
+          }}>
             © {new Date().getFullYear()} ResuVanta. All rights reserved.
           </div>
         </div>
 
         {/* Contact Form */}
-        <div className="lg:col-span-3 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm"
-                placeholder="Abdelhameed ..."
-              />
-            </div>
+        <div style={{
+          background: '#0f172a',
+          borderRadius: 16,
+          padding: '28px 24px',
+          border: '1px solid #1e293b',
+        }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {[
+              { label: 'Full Name', key: 'name', type: 'text', placeholder: 'e.g. John Smith' },
+              { label: 'Email Address', key: 'email', type: 'email', placeholder: 'your-email@example.com' },
+              { label: 'Subject', key: 'subject', type: 'text', placeholder: 'Message subject' },
+            ].map(({ label, key, type, placeholder }) => (
+              <div key={key}>
+                <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>
+                  {label}
+                </label>
+                <input
+                  type={type}
+                  required
+                  value={formData[key]}
+                  onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                  placeholder={placeholder}
+                  style={{
+                    width: '100%',
+                    padding: '9px 14px',
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: 8,
+                    color: '#f1f5f9',
+                    fontSize: 13,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            ))}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email Address</label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm"
-                placeholder="your-email@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Subject</label>
-              <input
-                type="text"
-                required
-                value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                className="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm"
-                placeholder="Message subject"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Message</label>
+              <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>
+                Message
+              </label>
               <textarea
                 rows={4}
                 required
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-none text-sm"
                 placeholder="Type your message here..."
+                style={{
+                  width: '100%',
+                  padding: '9px 14px',
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: 8,
+                  color: '#f1f5f9',
+                  fontSize: 13,
+                  outline: 'none',
+                  resize: 'none',
+                  boxSizing: 'border-box',
+                }}
               />
             </div>
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                className="w-full py-3 px-6 text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg shadow-sm transition duration-200 text-sm flex justify-center items-center gap-2"
-              >
-                Send Message 🚀
-              </button>
-            </div>
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '11px 20px',
+                background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginTop: 4,
+              }}
+            >
+              Send Message 🚀
+            </button>
+
           </form>
         </div>
 
