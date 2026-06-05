@@ -10,22 +10,18 @@ export async function POST(req: Request) {
       port: 465,
       secure: true,
       auth: {
-        user: process.env.ZOHO_EMAIL,
-        pass: process.env.ZOHO_PASSWORD,
+        user: 'support@resuvanta.com', // الإيميل بتاعك
+        pass: 'GuJYy4cFgzvQ',          // الباسورد اللي ظاهر في صورة image_990e62.png
       },
-      // السطر ده بيحل مشاكل شهادات الأمان اللي بتعمل رفض للإرسال
-      tls: {
-        rejectUnauthorized: false
-      }
     });
 
     await transporter.sendMail({
-      from: `"ResuVanta Contact" <${process.env.ZOHO_EMAIL}>`,
-      to: process.env.ZOHO_EMAIL,
+      from: `"ResuVanta Contact" <support@resuvanta.com>`,
+      to: 'support@resuvanta.com',
       replyTo: email,
       subject: `[ResuVanta] ${subject}`,
       html: `
-        <h3>New message from ResuVanta Contact Form</h3>
+        <h3>New message from ResuVanta</h3>
         <p><b>Name:</b> ${name}</p>
         <p><b>Email:</b> ${email}</p>
         <p><b>Subject:</b> ${subject}</p>
