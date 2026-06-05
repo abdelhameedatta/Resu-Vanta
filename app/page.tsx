@@ -461,6 +461,7 @@ function Home({ setPage }) {
           <div>LinkedIn optimization</div>
         </div>
       </section>
+      <ContactSection />
     </>
   );
 }
@@ -1524,7 +1525,6 @@ export default function App() {
         </div>
       </header>
       {renderPage()}
-      <ContactSection />
       <footer>
         <p>ResuVanta provides automated CV optimization support only. It does not guarantee interviews, job offers, or hiring decisions.</p>
       </footer>
