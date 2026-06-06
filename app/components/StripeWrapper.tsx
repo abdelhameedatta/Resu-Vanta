@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Elements,
   PaymentElement,
@@ -8,7 +8,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-// حطينا مفتاح الـ Test بتاعك مباشرة هنا عشان نتأكد إن مفيش مشكلة في قراية المتغيرات
+// المفتاح الحقيقي بتاعك للـ Test عشان نلغي أي مشكلة من Vercel مؤقتاً
 const stripePromise = loadStripe(
   "pk_test_51Tai3cGfyR1SSFQSyOTaWdMJBLBgdqjcSPC52S9qZeA4pKrISEo0KzHDTwwufLDVMy6k3ZLDOw3ypQFf3EK5lIZw007fqc8zq1"
 );
@@ -44,7 +44,7 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      {/* الـ PaymentElement هو اللي بيظهر حقول الفيزا */}
+      {/* ده العنصر اللي بيرسم حقول الفيزا */}
       <PaymentElement />
       
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
@@ -86,8 +86,14 @@ export default function StripeWrapper({
 }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState('');
   const [loadError, setLoadError] = useState('');
+  
+  // الحارس اللي هيمنع الـ React من تكرار الطلب وإخفاء الفورم
+  const hasFetched = useRef(false);
 
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
     fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,10 +101,17 @@ export default function StripeWrapper({
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.clientSecret) setClientSecret(data.clientSecret);
-        else setLoadError(data.error || 'Failed to load payment.');
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else {
+          setLoadError(data.error || 'Failed to load payment.');
+          hasFetched.current = false; // عشان لو فشل يحاول تاني
+        }
       })
-      .catch(() => setLoadError('Failed to connect to payment service.'));
+      .catch(() => {
+        setLoadError('Failed to connect to payment service.');
+        hasFetched.current = false;
+      });
   }, [service]);
 
   if (loadError) return <p style={{ color: 'red' }}>{loadError}</p>;
@@ -109,12 +122,8 @@ export default function StripeWrapper({
       </p>
     );
 
-  console.log("StripeWrapper Data:", clientSecret);
-  
   return (
-    // ضفنا خلفية بيضاء وبادينج عشان لو الستايل مخفي الكلام يبان
     <div style={{ minHeight: '400px', width: '100%', border: '2px solid red', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px' }}>
-      {/* ضفنا ثيم جاهز من سترايب عشان نجبر الفورم يظهر بشكل سليم */}
       <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
         <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
       </Elements>
