@@ -97,9 +97,12 @@ export default function StripeWrapper({
       </p>
     );
 
+  console.log("StripeWrapper Data:", clientSecret);
+  
   return (
+  <div style={{ minHeight: '400px', width: '100%', border: '2px solid red' }}>
     <Elements stripe={stripePromise} options={{ clientSecret }}>
       <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
     </Elements>
-  );
-}
+  </div>
+);
