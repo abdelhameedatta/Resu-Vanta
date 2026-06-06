@@ -2065,3 +2065,12 @@ body {
     display: none;
   }
 }
+
+/* ── Stripe Fix ── */
+.__PrivateStripeElement,
+.__PrivateStripeElement iframe,
+.StripeElement {
+  height: auto !important;
+  min-height: 44px !important;
+  display: block !important;
+}
