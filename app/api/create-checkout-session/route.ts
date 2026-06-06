@@ -16,6 +16,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   try {
     const body = await req.json();
     const service = body.service || 'optimization';
+    // الأسعار زي ما هي بالظبط بدون أي تغيير
     const amount = prices[service] || 799;
 
     const paymentIntent = await stripe.paymentIntents.create({
