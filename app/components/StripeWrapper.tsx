@@ -43,7 +43,14 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <PaymentElement />
+      <div style={{
+        background: '#fff',
+        padding: '16px',
+        borderRadius: '8px',
+        marginBottom: '16px',
+      }}>
+        <PaymentElement />
+      </div>
       <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
         <button type="submit" disabled={!stripe || isLoading}>
           {isLoading ? '⏳ Processing...' : 'Pay Now'}
