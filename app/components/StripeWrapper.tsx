@@ -43,17 +43,7 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <div style={{
-        background: '#fff',
-        padding: '16px',
-        borderRadius: '8px',
-        marginBottom: '16px',
-        minHeight: '200px',
-      }}>
-        <PaymentElement options={{
-          layout: 'tabs',
-        }} />
-      </div>
+      <PaymentElement />
       <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
         <button type="submit" disabled={!stripe || isLoading}>
           {isLoading ? '⏳ Processing...' : 'Pay Now'}
@@ -108,18 +98,7 @@ export default function StripeWrapper({
     );
 
   return (
-    <Elements stripe={stripePromise} options={{
-      clientSecret,
-      appearance: {
-        theme: 'night',
-        variables: {
-          colorBackground: '#1e293b',
-          colorText: '#f1f5f9',
-          colorPrimary: '#2563eb',
-          borderRadius: '8px',
-        },
-      },
-    }}>
+    <Elements stripe={stripePromise} options={{ clientSecret }}>
       <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
     </Elements>
   );
