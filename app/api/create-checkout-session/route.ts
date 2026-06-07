@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+const stripe = new Stripe('sk_test_51Tai3cGfyR1SSFQSNmEkyPNkXlDwM5TvWPqBUkJioUShpxp8uEm6Xs4gqPz7KJbovILyzINEmra18mMARFwX4thr00xVz98eKn', {
   apiVersion: '2024-06-20',
 });
 
@@ -16,7 +16,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   try {
     const body = await req.json();
     const service = body.service || 'optimization';
-    // الأسعار زي ما هي بالظبط بدون أي تغيير
     const amount = prices[service] || 799;
 
     const paymentIntent = await stripe.paymentIntents.create({
