@@ -8,9 +8,8 @@ import {
 } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-// مفتاحك الـ Test شغال زي الفل هنا
 const stripePromise = loadStripe(
-  "pk_test_51Tai3cGfyR1SSFQSyOTaWdMJBLBgdqjcSPC52S9qZeA4pKrISEo0KzHDTwwufLDVMy6k3ZLDOw3ypQFf3EK5lIZw007fqc8zq1"
+  "pk_test_51Tai3cGfyR1SSFQSyOTAwdMJBLBgdqjcSPC52S9qZeA4pKrISEo0KzHDTwwufLDVMy6k3ZLDOW3ypQfF3EK5lIZw007fqc8zq1"
 );
 
 function CheckoutForm({
@@ -45,14 +44,13 @@ function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
       <PaymentElement />
-      
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button 
           type="submit" 
           disabled={!stripe || isLoading}
           style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '5px' }}
         >
-          {isLoading ? '⏳ Processing...' : 'Pay Now'}
+          {isLoading ? 'Processing...' : 'Pay Now'}
         </button>
         <button 
           type="button" 
@@ -62,7 +60,6 @@ function CheckoutForm({
           Cancel
         </button>
       </div>
-      
       {errorMessage && (
         <p className="error" style={{ color: 'red', marginTop: 10 }}>
           {errorMessage}
@@ -102,7 +99,7 @@ export default function StripeWrapper({
           setClientSecret(data.clientSecret);
         } else {
           setLoadError(data.error || 'Failed to load payment.');
-          hasFetched.current = false; 
+          hasFetched.current = false;
         }
       })
       .catch(() => {
@@ -115,15 +112,15 @@ export default function StripeWrapper({
   if (!clientSecret)
     return (
       <p style={{ color: '#94a3b8', marginTop: 12 }}>
-        ⏳ Loading payment form...
+        Loading payment form...
       </p>
     );
 
   return (
-    <div style={{ minHeight: '400px', width: '100%', border: '2px solid red', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px' }}>
+    <div style={{ minHeight: '400px', width: '100%', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px' }}>
       <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
         <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
       </Elements>
     </div>
   );
-} // القوس ده كان ناقص عندك المرة اللي فاتت!
+}
