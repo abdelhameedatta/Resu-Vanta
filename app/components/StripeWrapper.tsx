@@ -13,11 +13,11 @@ const stripePromise = loadStripe(
 );
 
 function CheckoutForm({
-  onSuccess,
-  onCancel,
+  onSuccessRef,
+  onCancelRef,
 }: {
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccessRef: React.MutableRefObject<() => void>;
+  onCancelRef: React.MutableRefObject<() => void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -32,32 +32,18 @@ function CheckoutForm({
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: 'if_required',
-      confirmParams: {
-        payment_method_data: {
-          billing_details: {
-            name: 'ResuVanta Customer',
-          },
-        },
-      },
     });
     if (error) {
       setErrorMessage(error.message || 'Payment failed.');
       setIsLoading(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-      onSuccess();
+      onSuccessRef.current();
     }
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-          fields: {
-            billingDetails: 'never',
-          },
-        }}
-      />
+      <PaymentElement options={{ layout: 'tabs' }} />
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button
           type="submit"
@@ -78,7 +64,7 @@ function CheckoutForm({
         </button>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={() => onCancelRef.current()}
           style={{
             padding: '12px 24px',
             cursor: 'pointer',
@@ -108,7 +94,7 @@ interface StripeWrapperProps {
   onCancel: () => void;
 }
 
-export default function StripeWrapper({
+const StripeWrapper = React.memo(function StripeWrapper({
   service,
   onSuccess,
   onCancel,
@@ -116,6 +102,13 @@ export default function StripeWrapper({
   const [clientSecret, setClientSecret] = useState('');
   const [loadError, setLoadError] = useState('');
   const hasFetched = useRef(false);
+
+  const onSuccessRef = useRef(onSuccess);
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onCancelRef.current = onCancel;
+  }, [onSuccess, onCancel]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -192,8 +185,10 @@ export default function StripeWrapper({
       boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
     }}>
       <Elements stripe={stripePromise} options={elementsOptions}>
-        <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
+        <CheckoutForm onSuccessRef={onSuccessRef} onCancelRef={onCancelRef} />
       </Elements>
     </div>
   );
-}
+}, (prev, next) => prev.service === next.service);
+
+export default StripeWrapper;
