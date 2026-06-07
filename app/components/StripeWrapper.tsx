@@ -32,6 +32,13 @@ function CheckoutForm({
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: 'if_required',
+      confirmParams: {
+        payment_method_data: {
+          billing_details: {
+            name: 'ResuVanta Customer',
+          },
+        },
+      },
     });
     if (error) {
       setErrorMessage(error.message || 'Payment failed.');
@@ -43,7 +50,14 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement
+        options={{
+          layout: 'tabs',
+          fields: {
+            billingDetails: 'never',
+          },
+        }}
+      />
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button
           type="submit"
@@ -141,15 +155,12 @@ export default function StripeWrapper({
       },
       rules: {
         '.Input': {
-          border: '1.5px solid #64748b',
+          border: '1.5px solid #94a3b8',
           color: '#0f172a',
           backgroundColor: '#ffffff',
           fontSize: '15px',
           padding: '12px',
           boxShadow: 'none',
-        },
-        '.Input::placeholder': {
-          color: '#334155',
         },
         '.Input:focus': {
           border: '1.5px solid #2563eb',
@@ -167,14 +178,7 @@ export default function StripeWrapper({
   if (loadError) return <p style={{ color: '#dc2626', fontWeight: 700 }}>{loadError}</p>;
   if (!clientSecret)
     return (
-      <div style={{
-        padding: '24px',
-        background: '#ffffff',
-        borderRadius: '12px',
-        textAlign: 'center',
-        color: '#64748b',
-        fontSize: 14,
-      }}>
+      <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: 14 }}>
         ⏳ Loading payment form...
       </div>
     );
