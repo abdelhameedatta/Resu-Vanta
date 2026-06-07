@@ -42,14 +42,7 @@ export default function PaymentForm({ serviceName, onSuccess }: PaymentFormProps
 
   return (
     <form onSubmit={handleSubmit} className="p-4 border rounded-md shadow-sm bg-white">
-      <PaymentElement options={{
-        fields: {
-          billingDetails: {
-            name: 'always',
-            email: 'always',
-          }
-        }
-      }} />
+      <PaymentElement />
       <button
         type="submit"
         disabled={!stripe || isLoading}
