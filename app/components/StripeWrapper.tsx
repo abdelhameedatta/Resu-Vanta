@@ -129,9 +129,16 @@ export default function StripeWrapper({
   if (loadError) return <p style={{ color: '#dc2626', fontWeight: 700 }}>{loadError}</p>;
   if (!clientSecret)
     return (
-      <p style={{ color: '#94a3b8', marginTop: 12 }}>
+      <div style={{
+        padding: '24px',
+        background: '#ffffff',
+        borderRadius: '12px',
+        textAlign: 'center',
+        color: '#64748b',
+        fontSize: 14,
+      }}>
         ⏳ Loading payment form...
-      </p>
+      </div>
     );
 
   return (
@@ -152,6 +159,7 @@ export default function StripeWrapper({
               colorPrimary: '#2563eb',
               colorBackground: '#ffffff',
               colorText: '#0f172a',
+              colorTextPlaceholder: '#0f172a',
               colorDanger: '#dc2626',
               fontFamily: 'Inter, Arial, sans-serif',
               borderRadius: '8px',
@@ -159,23 +167,24 @@ export default function StripeWrapper({
             },
             rules: {
               '.Input': {
-                border: '1px solid #94a3b8',
+                border: '1.5px solid #94a3b8',
                 boxShadow: 'none',
                 color: '#0f172a',
                 backgroundColor: '#ffffff',
-                fontSize: '16px',
+                fontSize: '15px',
                 padding: '12px',
               },
               '.Input::placeholder': {
-                color: '#475569',
+                color: '#0f172a',
+                opacity: '1',
               },
               '.Input:focus': {
-                border: '1px solid #2563eb',
+                border: '1.5px solid #2563eb',
                 boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
               },
               '.Label': {
                 color: '#0f172a',
-                fontWeight: '600',
+                fontWeight: '700',
                 fontSize: '14px',
                 marginBottom: '6px',
               },
