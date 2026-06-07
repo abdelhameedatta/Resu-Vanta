@@ -183,6 +183,9 @@ const StripeWrapper = React.memo(function StripeWrapper({
       backgroundColor: '#ffffff',
       borderRadius: '12px',
       boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+      position: 'relative',
+      zIndex: 9999,
+      isolation: 'isolate',
     }}>
       <Elements stripe={stripePromise} options={elementsOptions}>
         <CheckoutForm onSuccessRef={onSuccessRef} onCancelRef={onCancelRef} />
