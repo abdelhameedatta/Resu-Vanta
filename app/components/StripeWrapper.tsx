@@ -43,22 +43,7 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <PaymentElement options={{
-        layout: 'tabs',
-        fields: {
-          billingDetails: {
-            name: 'always',
-            email: 'always',
-            address: {
-              country: 'always',
-            },
-          }
-        },
-        wallets: {
-          applePay: 'never',
-          googlePay: 'never',
-        },
-      }} />
+      <PaymentElement options={{ layout: 'tabs' }} />
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button
           type="submit"
@@ -150,8 +135,6 @@ const StripeWrapper = React.memo(function StripeWrapper({
 
   const elementsOptions = useMemo(() => ({
     clientSecret,
-    loader: 'always' as const,
-    payment_method_types: ['card'],
     appearance: {
       theme: 'stripe' as const,
       variables: {
