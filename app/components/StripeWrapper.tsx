@@ -43,7 +43,15 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement options={{
+        layout: 'tabs',
+        fields: {
+          billingDetails: {
+            name: 'always',
+            email: 'always',
+          }
+        }
+      }} />
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button
           type="submit"
