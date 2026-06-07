@@ -49,8 +49,15 @@ function CheckoutForm({
           billingDetails: {
             name: 'always',
             email: 'always',
+            address: {
+              country: 'always',
+            },
           }
-        }
+        },
+        wallets: {
+          applePay: 'never',
+          googlePay: 'never',
+        },
       }} />
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button
@@ -143,6 +150,8 @@ const StripeWrapper = React.memo(function StripeWrapper({
 
   const elementsOptions = useMemo(() => ({
     clientSecret,
+    loader: 'always' as const,
+    payment_method_types: ['card'],
     appearance: {
       theme: 'stripe' as const,
       variables: {
@@ -194,6 +203,8 @@ const StripeWrapper = React.memo(function StripeWrapper({
       position: 'relative',
       zIndex: 9999,
       isolation: 'isolate',
+      minHeight: '420px',
+      overflow: 'visible',
     }}>
       <Elements stripe={stripePromise} options={elementsOptions}>
         <CheckoutForm onSuccessRef={onSuccessRef} onCancelRef={onCancelRef} />
