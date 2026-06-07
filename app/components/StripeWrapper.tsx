@@ -159,18 +159,25 @@ export default function StripeWrapper({
             },
             rules: {
               '.Input': {
-                border: '1px solid #cbd5e1',
+                border: '1px solid #94a3b8',
                 boxShadow: 'none',
                 color: '#0f172a',
-                backgroundColor: '#f8fafc',
+                backgroundColor: '#ffffff',
+                fontSize: '16px',
+                padding: '12px',
+              },
+              '.Input::placeholder': {
+                color: '#475569',
               },
               '.Input:focus': {
                 border: '1px solid #2563eb',
                 boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
               },
               '.Label': {
-                color: '#475569',
+                color: '#0f172a',
                 fontWeight: '600',
+                fontSize: '14px',
+                marginBottom: '6px',
               },
             },
           },
