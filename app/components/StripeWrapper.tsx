@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Elements,
   PaymentElement,
@@ -126,6 +126,44 @@ export default function StripeWrapper({
       });
   }, [service]);
 
+  const elementsOptions = useMemo(() => ({
+    clientSecret,
+    appearance: {
+      theme: 'stripe' as const,
+      variables: {
+        colorPrimary: '#2563eb',
+        colorBackground: '#ffffff',
+        colorText: '#0f172a',
+        colorTextPlaceholder: '#334155',
+        colorDanger: '#dc2626',
+        fontFamily: 'Inter, Arial, sans-serif',
+        borderRadius: '8px',
+      },
+      rules: {
+        '.Input': {
+          border: '1.5px solid #64748b',
+          color: '#0f172a',
+          backgroundColor: '#ffffff',
+          fontSize: '15px',
+          padding: '12px',
+          boxShadow: 'none',
+        },
+        '.Input::placeholder': {
+          color: '#334155',
+        },
+        '.Input:focus': {
+          border: '1.5px solid #2563eb',
+          boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
+        },
+        '.Label': {
+          color: '#0f172a',
+          fontWeight: '700',
+          fontSize: '14px',
+        },
+      },
+    },
+  }), [clientSecret]);
+
   if (loadError) return <p style={{ color: '#dc2626', fontWeight: 700 }}>{loadError}</p>;
   if (!clientSecret)
     return (
@@ -149,49 +187,7 @@ export default function StripeWrapper({
       borderRadius: '12px',
       boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
     }}>
-      <Elements
-        stripe={stripePromise}
-        options={{
-          clientSecret,
-          appearance: {
-            theme: 'stripe',
-            variables: {
-              colorPrimary: '#2563eb',
-              colorBackground: '#ffffff',
-              colorText: '#0f172a',
-              colorTextPlaceholder: '#0f172a',
-              colorDanger: '#dc2626',
-              fontFamily: 'Inter, Arial, sans-serif',
-              borderRadius: '8px',
-              spacingUnit: '4px',
-            },
-            rules: {
-              '.Input': {
-                border: '1.5px solid #94a3b8',
-                boxShadow: 'none',
-                color: '#0f172a',
-                backgroundColor: '#ffffff',
-                fontSize: '15px',
-                padding: '12px',
-              },
-              '.Input::placeholder': {
-                color: '#0f172a',
-                opacity: '1',
-              },
-              '.Input:focus': {
-                border: '1.5px solid #2563eb',
-                boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
-              },
-              '.Label': {
-                color: '#0f172a',
-                fontWeight: '700',
-                fontSize: '14px',
-                marginBottom: '6px',
-              },
-            },
-          },
-        }}
-      >
+      <Elements stripe={stripePromise} options={elementsOptions}>
         <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
       </Elements>
     </div>
