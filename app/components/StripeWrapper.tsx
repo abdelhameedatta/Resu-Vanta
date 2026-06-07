@@ -43,25 +43,44 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-      <PaymentElement />
+      <PaymentElement options={{ layout: 'tabs' }} />
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={!stripe || isLoading}
-          style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '5px' }}
+          style={{
+            padding: '12px 24px',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: 14,
+            opacity: isLoading ? 0.7 : 1,
+          }}
         >
-          {isLoading ? 'Processing...' : 'Pay Now'}
+          {isLoading ? '⏳ Processing...' : 'Pay Now'}
         </button>
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={onCancel}
-          style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#f1f5f9', color: '#334155', border: 'none', borderRadius: '5px' }}
+          style={{
+            padding: '12px 24px',
+            cursor: 'pointer',
+            background: '#f1f5f9',
+            color: '#334155',
+            border: '1px solid #cbd5e1',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: 14,
+          }}
         >
           Cancel
         </button>
       </div>
       {errorMessage && (
-        <p className="error" style={{ color: 'red', marginTop: 10 }}>
+        <p style={{ color: '#dc2626', marginTop: 10, fontWeight: 700 }}>
           {errorMessage}
         </p>
       )}
@@ -87,7 +106,6 @@ export default function StripeWrapper({
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-
     fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,17 +126,56 @@ export default function StripeWrapper({
       });
   }, [service]);
 
-  if (loadError) return <p style={{ color: 'red' }}>{loadError}</p>;
+  if (loadError) return <p style={{ color: '#dc2626', fontWeight: 700 }}>{loadError}</p>;
   if (!clientSecret)
     return (
       <p style={{ color: '#94a3b8', marginTop: 12 }}>
-        Loading payment form...
+        ⏳ Loading payment form...
       </p>
     );
 
   return (
-    <div style={{ minHeight: '400px', width: '100%', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px' }}>
-      <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+    <div style={{
+      width: '100%',
+      padding: '24px',
+      backgroundColor: '#ffffff',
+      borderRadius: '12px',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+    }}>
+      <Elements
+        stripe={stripePromise}
+        options={{
+          clientSecret,
+          appearance: {
+            theme: 'stripe',
+            variables: {
+              colorPrimary: '#2563eb',
+              colorBackground: '#ffffff',
+              colorText: '#0f172a',
+              colorDanger: '#dc2626',
+              fontFamily: 'Inter, Arial, sans-serif',
+              borderRadius: '8px',
+              spacingUnit: '4px',
+            },
+            rules: {
+              '.Input': {
+                border: '1px solid #cbd5e1',
+                boxShadow: 'none',
+                color: '#0f172a',
+                backgroundColor: '#f8fafc',
+              },
+              '.Input:focus': {
+                border: '1px solid #2563eb',
+                boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
+              },
+              '.Label': {
+                color: '#475569',
+                fontWeight: '600',
+              },
+            },
+          },
+        }}
+      >
         <CheckoutForm onSuccess={onSuccess} onCancel={onCancel} />
       </Elements>
     </div>
