@@ -38,7 +38,7 @@ export default function ContactSection() {
       borderTop: '1px solid #1e293b',
       background: 'transparent',
     }}>
-      <div style={{
+      <div className="contact-grid" style={{
         maxWidth: 900,
         margin: '0 auto',
         display: 'grid',
