@@ -57,31 +57,31 @@ function CheckoutForm({
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
 
       <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Full Name</label>
+        <label className="payment-label">Full Name</label>
         <input
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="John Smith"
           required
-          style={{ width: '100%', padding: '10px 12px', backgroundColor: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+          className="payment-input"
         />
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Email</label>
+        <label className="payment-label">Email</label>
         <input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder="name@email.com"
           required
-          style={{ width: '100%', padding: '10px 12px', backgroundColor: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+          className="payment-input"
         />
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Country</label>
+        <label className="payment-label">Country</label>
         <input
           type="text"
           value={country}
@@ -89,7 +89,7 @@ function CheckoutForm({
           placeholder="US"
           required
           maxLength={2}
-          style={{ width: '100%', padding: '10px 12px', backgroundColor: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+          className="payment-input"
         />
       </div>
 
@@ -130,6 +130,7 @@ function CheckoutForm({
           Cancel
         </button>
       </div>
+
       {errorMessage && (
         <p style={{ color: '#dc2626', marginTop: 10, fontWeight: 700 }}>
           {errorMessage}
@@ -192,29 +193,9 @@ const StripeWrapper = React.memo(function StripeWrapper({
         colorPrimary: '#2563eb',
         colorBackground: '#ffffff',
         colorText: '#0f172a',
-        colorTextPlaceholder: '#334155',
         colorDanger: '#dc2626',
         fontFamily: 'Inter, Arial, sans-serif',
         borderRadius: '8px',
-      },
-      rules: {
-        '.Input': {
-          border: '1.5px solid #94a3b8',
-          color: '#0f172a',
-          backgroundColor: '#ffffff',
-          fontSize: '15px',
-          padding: '12px',
-          boxShadow: 'none',
-        },
-        '.Input:focus': {
-          border: '1.5px solid #2563eb',
-          boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
-        },
-        '.Label': {
-          color: '#0f172a',
-          fontWeight: '700',
-          fontSize: '14px',
-        },
       },
     },
   }), [clientSecret]);
@@ -234,10 +215,6 @@ const StripeWrapper = React.memo(function StripeWrapper({
       backgroundColor: '#ffffff',
       borderRadius: '12px',
       boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-      position: 'relative',
-      zIndex: 9999,
-      isolation: 'isolate',
-      minHeight: '420px',
       overflow: 'visible',
     }}>
       <Elements stripe={stripePromise} options={elementsOptions}>
