@@ -2111,3 +2111,53 @@ body {
   -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
   -webkit-text-fill-color: #f1f5f9 !important;
 }
+
+/* Hamburger button - hidden on desktop */
+.hamburgerBtn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: inherit;
+  padding: 4px 8px;
+}
+
+@media (max-width: 850px) {
+  .hamburgerBtn {
+    display: block;
+  }
+
+  header {
+    flex-wrap: nowrap;
+    align-items: center;
+    position: relative;
+  }
+
+  nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: var(--bg, #fff);
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 8px 0;
+  }
+
+  nav.navOpen {
+    display: flex;
+  }
+
+  nav button {
+    width: 100%;
+    text-align: left;
+    padding: 12px 24px;
+  }
+
+  .site.dark nav {
+    background: #1e293b;
+  }
+}
