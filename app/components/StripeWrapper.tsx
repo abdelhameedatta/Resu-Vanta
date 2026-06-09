@@ -23,6 +23,9 @@ function CheckoutForm({
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,6 +35,15 @@ function CheckoutForm({
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: 'if_required',
+      confirmParams: {
+        payment_method_data: {
+          billing_details: {
+            name,
+            email,
+            address: { country },
+          },
+        },
+      },
     });
     if (error) {
       setErrorMessage(error.message || 'Payment failed.');
@@ -43,7 +55,46 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Full Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="John Smith"
+          required
+          style={{ width: '100%', padding: '10px 12px', backgroundColor: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="name@email.com"
+          required
+          style={{ width: '100%', padding: '10px 12px', backgroundColor: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Country</label>
+        <input
+          type="text"
+          value={country}
+          onChange={e => setCountry(e.target.value.toUpperCase())}
+          placeholder="US"
+          required
+          maxLength={2}
+          style={{ width: '100%', padding: '10px 12px', backgroundColor: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+        />
+      </div>
+
       <PaymentElement options={{ layout: 'tabs' }} />
+
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <button
           type="submit"
