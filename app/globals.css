@@ -2161,3 +2161,35 @@ body {
     background: #1e293b;
   }
 }
+
+/* ── Contact Section Mobile ── */
+@media (max-width: 700px) {
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Payment Form Mobile ── */
+@media (max-width: 600px) {
+  .locked-card {
+    padding: 12px !important;
+  }
+
+  .locked-card > div[style] {
+    padding: 12px !important;
+  }
+
+  /* Fix Stripe iframe overflow on mobile */
+  .__PrivateStripeElement,
+  .__PrivateStripeElement iframe {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Payment inputs full width on mobile */
+  .payment-input {
+    font-size: 16px !important; /* منع iOS من zoom */
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
