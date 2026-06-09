@@ -53,35 +53,56 @@ function CheckoutForm({
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '11px 14px',
+    borderRadius: '8px',
+    border: '1.5px solid #334155',
+    background: '#1e293b',
+    color: '#f1f5f9',
+    fontSize: '15px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    marginTop: '4px',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#94a3b8',
+    marginBottom: '2px',
+  };
+
   return (
-    <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+    <form onSubmit={handleSubmit} style={{ marginTop: 8 }}>
 
       <div style={{ marginBottom: 12 }}>
-        <label className="payment-label">Full Name</label>
+        <label style={labelStyle}>Full Name</label>
         <input
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="John Smith"
           required
-          className="payment-input"
+          style={inputStyle}
         />
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <label className="payment-label">Email</label>
+        <label style={labelStyle}>Email</label>
         <input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder="name@email.com"
           required
-          className="payment-input"
+          style={inputStyle}
         />
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <label className="payment-label">Country</label>
+      <div style={{ marginBottom: 20 }}>
+        <label style={labelStyle}>Country (2-letter code)</label>
         <input
           type="text"
           value={country}
@@ -89,25 +110,35 @@ function CheckoutForm({
           placeholder="US"
           required
           maxLength={2}
-          className="payment-input"
+          style={inputStyle}
         />
       </div>
 
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement
+        options={{
+          layout: {
+            type: 'accordion',
+            defaultCollapsed: false,
+            radios: false,
+            spacedAccordionItems: true,
+          },
+        }}
+      />
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
         <button
           type="submit"
           disabled={!stripe || isLoading}
           style={{
-            padding: '12px 24px',
+            flex: 1,
+            padding: '13px 16px',
             cursor: isLoading ? 'not-allowed' : 'pointer',
             background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
             fontWeight: 700,
-            fontSize: 14,
+            fontSize: 15,
             opacity: isLoading ? 0.7 : 1,
           }}
         >
@@ -117,14 +148,15 @@ function CheckoutForm({
           type="button"
           onClick={() => onCancelRef.current()}
           style={{
-            padding: '12px 24px',
+            flex: 1,
+            padding: '13px 16px',
             cursor: 'pointer',
-            background: '#f1f5f9',
-            color: '#334155',
-            border: '1px solid #cbd5e1',
+            background: '#1e293b',
+            color: '#cbd5e1',
+            border: '1px solid #334155',
             borderRadius: '8px',
             fontWeight: 700,
-            fontSize: 14,
+            fontSize: 15,
           }}
         >
           Cancel
@@ -132,7 +164,7 @@ function CheckoutForm({
       </div>
 
       {errorMessage && (
-        <p style={{ color: '#dc2626', marginTop: 10, fontWeight: 700 }}>
+        <p style={{ color: '#f87171', marginTop: 10, fontWeight: 700, fontSize: 13 }}>
           {errorMessage}
         </p>
       )}
@@ -188,19 +220,53 @@ const StripeWrapper = React.memo(function StripeWrapper({
   const elementsOptions = useMemo(() => ({
     clientSecret,
     appearance: {
-      theme: 'stripe' as const,
+      theme: 'night' as const,
       variables: {
         colorPrimary: '#2563eb',
-        colorBackground: '#ffffff',
-        colorText: '#0f172a',
-        colorDanger: '#dc2626',
+        colorBackground: '#1e293b',
+        colorText: '#f1f5f9',
+        colorTextPlaceholder: '#64748b',
+        colorDanger: '#f87171',
         fontFamily: 'Inter, Arial, sans-serif',
         borderRadius: '8px',
+        spacingUnit: '4px',
+      },
+      rules: {
+        '.Input': {
+          border: '1.5px solid #334155',
+          color: '#f1f5f9',
+          backgroundColor: '#0f172a',
+          fontSize: '15px',
+          padding: '11px 12px',
+        },
+        '.Input:focus': {
+          border: '1.5px solid #2563eb',
+          boxShadow: '0 0 0 2px rgba(37,99,235,0.2)',
+        },
+        '.Label': {
+          color: '#94a3b8',
+          fontWeight: '600',
+          fontSize: '13px',
+        },
+        '.Tab': {
+          border: '1px solid #334155',
+          backgroundColor: '#1e293b',
+          color: '#94a3b8',
+        },
+        '.Tab--selected': {
+          border: '1.5px solid #2563eb',
+          backgroundColor: '#0f172a',
+          color: '#f1f5f9',
+        },
+        '.AccordionItem': {
+          border: '1px solid #334155',
+          backgroundColor: '#1e293b',
+        },
       },
     },
   }), [clientSecret]);
 
-  if (loadError) return <p style={{ color: '#dc2626', fontWeight: 700 }}>{loadError}</p>;
+  if (loadError) return <p style={{ color: '#f87171', fontWeight: 700 }}>{loadError}</p>;
   if (!clientSecret)
     return (
       <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: 14 }}>
@@ -211,10 +277,12 @@ const StripeWrapper = React.memo(function StripeWrapper({
   return (
     <div style={{
       width: '100%',
-      padding: '24px',
-      backgroundColor: '#ffffff',
+      padding: '20px 16px',
+      backgroundColor: '#0f172a',
       borderRadius: '12px',
-      boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+      border: '1px solid #1e293b',
+      boxSizing: 'border-box',
       overflow: 'visible',
     }}>
       <Elements stripe={stripePromise} options={elementsOptions}>
