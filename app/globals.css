@@ -2073,3 +2073,41 @@ body {
   margin: initial !important;
   padding: initial !important;
 }
+
+.payment-input {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+  transition: border-color 0.2s;
+}
+.payment-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+.payment-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+.site.dark .payment-input {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+.site.dark .payment-label {
+  color: #94a3b8;
+}
+.site.dark .payment-input:-webkit-autofill,
+.site.dark .payment-input:-webkit-autofill:hover,
+.site.dark .payment-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+}
