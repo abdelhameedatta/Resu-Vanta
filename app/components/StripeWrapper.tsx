@@ -119,7 +119,6 @@ function CheckoutForm({
           layout: {
             type: 'accordion',
             defaultCollapsed: false,
-            radios: false,
             spacedAccordionItems: true,
           },
         }}
@@ -284,7 +283,7 @@ const StripeWrapper = React.memo(function StripeWrapper({
       border: '1px solid #1e293b',
       boxSizing: 'border-box',
       overflow: 'visible',
-    }>
+    }}>
       <Elements stripe={stripePromise} options={elementsOptions}>
         <CheckoutForm onSuccessRef={onSuccessRef} onCancelRef={onCancelRef} />
       </Elements>
