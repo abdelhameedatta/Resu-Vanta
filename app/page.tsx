@@ -1476,8 +1476,7 @@ useEffect(()=>{
     const payment = params.get('payment');
     if (['optimization','builder','linkedin','pricing','faq'].includes(selectedPage)) {
       setPage(selectedPage);
-    } else if (payment === 'success' && service && ['optimization','builder','linkedin'].includes(service)) {
-      sessionStorage.setItem('resuvanta_payment_success', service);
+    } else if (service && ['optimization','builder','linkedin'].includes(service)) {
       setPage(service);
     }
     if (payment || service || selectedPage) {

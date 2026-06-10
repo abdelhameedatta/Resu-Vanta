@@ -28,6 +28,8 @@ export default function UnlockButton({
       }
     }
 
+    sessionStorage.setItem('resuvanta_service', service);
+
     setLoading(true);
     try {
       const res = await fetch('/api/create-checkout-session', {
