@@ -283,7 +283,8 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
     width: '794px', background: '#ffffff',
     fontFamily: 'Arial, Helvetica, sans-serif',
     color: '#111827', lineHeight: '1.5',
-    padding: '57px', boxSizing: 'border-box',
+    paddingLeft: '57px', paddingRight: '57px',
+    boxSizing: 'border-box',
   });
 
   container.innerHTML = `
@@ -311,22 +312,35 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
     });
     document.body.removeChild(container);
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.97);
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const imgW = pageW;
-    const imgH = (canvas.height * pageW) / canvas.width;
+    const pageW = doc.internal.pageSize.getWidth();   // 210mm
+    const pageH = doc.internal.pageSize.getHeight();  // 297mm
+    const marginMM = 15;
+    const usableHmm = pageH - marginMM * 2;           // 267mm per page
+    const pxPerMM = canvas.width / pageW;
+    const usableHpx = usableHmm * pxPerMM;
 
-    let heightLeft = imgH;
-    let position = 0;
-    doc.addImage(imgData, 'JPEG', 0, position, imgW, imgH, '', 'FAST');
-    heightLeft -= pageH;
-    while (heightLeft > 0) {
-      position -= pageH;
-      doc.addPage();
-      doc.addImage(imgData, 'JPEG', 0, position, imgW, imgH, '', 'FAST');
-      heightLeft -= pageH;
+    let yPx = 0;
+    let pageNum = 0;
+
+    while (yPx < canvas.height) {
+      if (pageNum > 0) doc.addPage();
+
+      const sliceHpx = Math.min(usableHpx, canvas.height - yPx);
+      const sliceHmm = sliceHpx / pxPerMM;
+
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHpx;
+      const ctx = sliceCanvas.getContext('2d') as CanvasRenderingContext2D;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(canvas, 0, yPx, canvas.width, sliceHpx, 0, 0, canvas.width, sliceHpx);
+
+      doc.addImage(sliceCanvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, marginMM, pageW, sliceHmm, '', 'FAST');
+
+      yPx += sliceHpx;
+      pageNum++;
     }
 
     doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
