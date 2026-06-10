@@ -220,8 +220,8 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
-function openPDFWindow(cv, title = 'Optimized CV') {
-  const parseText = (text) => {
+async function openPDFWindow(cv: any, title = 'Optimized CV') {
+  const parseText = (text: any) => {
     if (!text) return '';
     let t = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     t = t.replace(/^#+\s*/gm, '');
@@ -230,15 +230,15 @@ function openPDFWindow(cv, title = 'Optimized CV') {
     return t;
   };
 
-  function formatExperienceForPDF(text) {
+  function formatExperienceForPDF(text: string) {
     if (!text) return '';
     const blocks = text.split(/\n\s*\n/);
     return blocks.map(block => {
-      const lines = block.split('\n').filter(l => l.trim() !== '');
+      const lines = block.split('\n').filter((l: string) => l.trim() !== '');
       if (lines.length === 0) return '';
-      const headers = [];
-      const bullets = [];
-      lines.forEach(line => {
+      const headers: string[] = [];
+      const bullets: string[] = [];
+      lines.forEach((line: string) => {
         const trimmed = line.trim();
         if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
           bullets.push(trimmed);
@@ -252,8 +252,8 @@ function openPDFWindow(cv, title = 'Optimized CV') {
       if (headers.length > 0) {
         blockHtml += `<div style="font-weight: bold; color: #000; font-size: 14px; text-transform: uppercase;">${parseText(headers[0])}</div>`;
         if (headers.length >= 2) {
-          let company = parseText(headers[1]);
-          let date = headers.length >= 3 ? parseText(headers[2]) : '';
+          const company = parseText(headers[1]);
+          const date = headers.length >= 3 ? parseText(headers[2]) : '';
           blockHtml += `
           <table style="width: 100%; border-collapse: collapse; margin-top: 2px; margin-bottom: 8px;">
             <tr>
@@ -265,7 +265,7 @@ function openPDFWindow(cv, title = 'Optimized CV') {
           blockHtml = blockHtml.replace('uppercase;">', 'uppercase; margin-bottom: 8px;">');
         }
       }
-      bullets.forEach(bullet => {
+      bullets.forEach((bullet: string) => {
         const finalLine = bullet.startsWith('•') ? bullet : '• ' + bullet;
         blockHtml += `<div style="margin-left: 14px; margin-bottom: 2px; font-weight: normal; color: #222; font-size: 13px; line-height: 1.4;">${parseText(finalLine)}</div>`;
       });
@@ -274,37 +274,65 @@ function openPDFWindow(cv, title = 'Optimized CV') {
     }).join('');
   }
 
-  const html = `<!DOCTYPE html>
-  <html><head><title>${parseText(title)}</title>
-    <style>
-    @page { size: A4; margin: 15mm; }
-    @media print { header, footer, .no-print { display: none !important; } body { padding: 0; -webkit-print-color-adjust: exact; } }
-    body { font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.5; padding: 10px; }
-    h1 { text-align: center; font-size: 24px; margin: 0 0 6px; letter-spacing: 0.5px; text-transform: uppercase; }
-    .contact { text-align: center; font-size: 11px; margin-bottom: 20px; color: #374151; }
-    h2 { font-size: 13px; border-bottom: 1.5px solid #111827; padding-bottom: 3px; margin: 16px 0 8px; letter-spacing: .5px; text-transform: uppercase; font-weight: bold; }
-    p { margin: 4px 0; font-size: 12px; white-space: pre-wrap; text-align: justify; }
-    </style></head>
-    <body>
-    <h1>${parseText(cv.name)}</h1>
-    <div class="contact">ADDRESS: ${parseText(cv.address)} | PHONE: ${parseText(cv.phone)} | E-MAIL: ${parseText(cv.email)} | LinkedIn: ${parseText(cv.linkedin)}</div>
-    <h2>SUMMARY</h2><p>${parseText(cv.summary)}</p>
-    <h2>PROFESSIONAL EXPERIENCE</h2>
+  const h2S = 'font-size:13px;border-bottom:1.5px solid #111827;padding-bottom:3px;margin:16px 0 8px;letter-spacing:.5px;text-transform:uppercase;font-weight:bold;font-family:Arial,Helvetica,sans-serif;color:#111827;';
+  const pS  = 'margin:4px 0;font-size:12px;white-space:pre-wrap;text-align:justify;font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.5;';
+
+  const container = document.createElement('div');
+  Object.assign(container.style, {
+    position: 'fixed', left: '-9999px', top: '0',
+    width: '794px', background: '#ffffff',
+    fontFamily: 'Arial, Helvetica, sans-serif',
+    color: '#111827', lineHeight: '1.5',
+    padding: '57px', boxSizing: 'border-box',
+  });
+
+  container.innerHTML = `
+    <h1 style="text-align:center;font-size:24px;margin:0 0 6px;letter-spacing:0.5px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif;">${parseText(cv.name)}</h1>
+    <div style="text-align:center;font-size:11px;margin-bottom:20px;color:#374151;font-family:Arial,Helvetica,sans-serif;">ADDRESS: ${parseText(cv.address)} | PHONE: ${parseText(cv.phone)} | E-MAIL: ${parseText(cv.email)} | LinkedIn: ${parseText(cv.linkedin)}</div>
+    <div style="${h2S}">SUMMARY</div><p style="${pS}">${parseText(cv.summary)}</p>
+    <div style="${h2S}">PROFESSIONAL EXPERIENCE</div>
     <div>${formatExperienceForPDF(cv.experience)}</div>
-    <h2>EDUCATION</h2><p>${parseText(cv.education)}</p>
-    <h2>SKILLS</h2><p><b>Soft Skills:</b> ${parseText(cv.softSkills)}</p><p><b>Technical Skills:</b> ${parseText(cv.technicalSkills)}</p>
-    <h2>INTERNSHIP AND COURSES</h2><p>${parseText(cv.internshipCourses)}</p>
-    <h2>ADDITIONAL INFORMATION</h2><p>${parseText(cv.additionalInfo)}</p>
-    <h2>LANGUAGE</h2><p>${parseText(cv.language)}</p>
-    <h2>LICENSE</h2><p>${parseText(cv.license)}</p>
-    <script>
-      window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
-    </script>
-    </body></html>`;
-  const w = window.open('', '_blank');
-  if (w) {
-    w.document.write(html);
-    w.document.close();
+    <div style="${h2S}">EDUCATION</div><p style="${pS}">${parseText(cv.education)}</p>
+    <div style="${h2S}">SKILLS</div><p style="${pS}"><b>Soft Skills:</b> ${parseText(cv.softSkills)}</p><p style="${pS}"><b>Technical Skills:</b> ${parseText(cv.technicalSkills)}</p>
+    <div style="${h2S}">INTERNSHIP AND COURSES</div><p style="${pS}">${parseText(cv.internshipCourses)}</p>
+    <div style="${h2S}">ADDITIONAL INFORMATION</div><p style="${pS}">${parseText(cv.additionalInfo)}</p>
+    <div style="${h2S}">LANGUAGE</div><p style="${pS}">${parseText(cv.language)}</p>
+    <div style="${h2S}">LICENSE</div><p style="${pS}">${parseText(cv.license)}</p>
+  `;
+
+  document.body.appendChild(container);
+
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const { default: jsPDF } = await import('jspdf');
+
+    const canvas = await html2canvas(container, {
+      scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, width: 794,
+    });
+    document.body.removeChild(container);
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.97);
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * pageW) / canvas.width;
+
+    let heightLeft = imgH;
+    let position = 0;
+    doc.addImage(imgData, 'JPEG', 0, position, imgW, imgH, '', 'FAST');
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      position -= pageH;
+      doc.addPage();
+      doc.addImage(imgData, 'JPEG', 0, position, imgW, imgH, '', 'FAST');
+      heightLeft -= pageH;
+    }
+
+    doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
+  } catch (err) {
+    if (document.body.contains(container)) document.body.removeChild(container);
+    throw err;
   }
 }
 
@@ -855,8 +883,8 @@ function OptimizationPage() {
 
           <h3>Live Preview</h3>
           <CVTemplatePreview cv={paidCV} />
-          <button onClick={()=>{
-            openPDFWindow(paidCV,'Optimized CV');
+          <button onClick={async ()=>{
+            await openPDFWindow(paidCV,'Optimized CV');
             clearServiceSession('optimization');
             setPaymentConfirmed(false); setRemainingOutputs(3);
             setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
@@ -1130,8 +1158,8 @@ function BuilderWizard() {
           )}
 
           <CVTemplatePreview cv={builtCV}/>
-          <button onClick={()=>{
-            openPDFWindow(builtCV,'Built CV');
+          <button onClick={async ()=>{
+            await openPDFWindow(builtCV,'Built CV');
             clearServiceSession('builder');
             setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
           }}>Download PDF</button>
