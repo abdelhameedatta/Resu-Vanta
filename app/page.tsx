@@ -482,10 +482,10 @@ function OptimizationPage() {
   const [remainingOutputs, setRemainingOutputs] = useState(3);
   
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const payment = params.get('payment');
+    const paymentService = sessionStorage.getItem('resuvanta_payment_success');
     const saved = sessionStorage.getItem('resuvanta_pending_optimization');
-    if (payment === 'success' && saved) {
+    if (paymentService === 'optimization' && saved) {
+      sessionStorage.removeItem('resuvanta_payment_success');
       try {
         const data = JSON.parse(saved);
         const savedResume = data.resume || '';
@@ -889,10 +889,10 @@ function BuilderWizard() {
   const [selectedTechnicalSkills, setSelectedTechnicalSkills] = useState([]);
 
   useEffect(()=>{
-    const params = new URLSearchParams(window.location.search);
-    const payment = params.get('payment');
+    const paymentService = sessionStorage.getItem('resuvanta_payment_success');
     const saved = sessionStorage.getItem('resuvanta_pending_builder');
-    if (payment==='success'&&saved) {
+    if (paymentService==='builder'&&saved) {
+      sessionStorage.removeItem('resuvanta_payment_success');
       try {
         const data = JSON.parse(saved);
         if (data.builder) setBuilder(data.builder);
@@ -1169,10 +1169,10 @@ function LinkedInPage() {
   const [fileLoading, setFileLoading] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const payment = params.get('payment');
+    const paymentService = sessionStorage.getItem('resuvanta_payment_success');
     const saved = sessionStorage.getItem('resuvanta_pending_linkedin');
-    if (payment === 'success' && saved) {
+    if (paymentService === 'linkedin' && saved) {
+      sessionStorage.removeItem('resuvanta_payment_success');
       try {
         const data = JSON.parse(saved);
         if (data.targetRole) setTargetRole(data.targetRole);
@@ -1469,7 +1469,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(()=>{
+useEffect(()=>{
     const params = new URLSearchParams(window.location.search);
     const selectedPage = params.get('page');
     const service = params.get('service');
@@ -1477,12 +1477,13 @@ export default function App() {
     if (['optimization','builder','linkedin','pricing','faq'].includes(selectedPage)) {
       setPage(selectedPage);
     } else if (payment === 'success' && service && ['optimization','builder','linkedin'].includes(service)) {
+      sessionStorage.setItem('resuvanta_payment_success', service);
       setPage(service);
     }
-    if (payment || service) {
+    if (payment || service || selectedPage) {
       window.history.replaceState({}, '', '/');
     }
-  },[]);
+  },[]);;
 
   function renderPage() {
     if (page==='home') return <Home setPage={setPage}/>;
