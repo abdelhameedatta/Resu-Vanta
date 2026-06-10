@@ -221,9 +221,10 @@ function sectionFromResume(resume, sectionNames) {
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 async function openPDFWindow(cv: any, title = 'Optimized CV') {
-  const [pdfMakeModule, fontsModule] = await Promise.all([
-    import('pdfmake/build/pdfmake' as any),
-    import('pdfmake/build/vfs_fonts' as any),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pdfMakeModule, fontsModule]: [any, any] = await Promise.all([
+    import(/* webpackChunkName: "pdfmake" */ 'pdfmake/build/pdfmake'),
+    import(/* webpackChunkName: "vfs_fonts" */ 'pdfmake/build/vfs_fonts'),
   ]);
   const pdfMake = pdfMakeModule.default || pdfMakeModule;
   const vfsFonts = fontsModule.default || fontsModule;
