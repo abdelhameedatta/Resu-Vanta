@@ -221,133 +221,69 @@ function sectionFromResume(resume, sectionNames) {
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 async function openPDFWindow(cv: any, title = 'Optimized CV') {
-  const parseText = (text: any) => {
-    if (!text) return '';
-    let t = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    t = t.replace(/^#+\s*/gm, '');
-    t = t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    t = t.replace(/\*(.*?)\*/g, '<i>$1</i>');
-    return t;
-  };
+  const [pdfMakeModule, fontsModule] = await Promise.all([
+    import('pdfmake/build/pdfmake' as any),
+    import('pdfmake/build/vfs_fonts' as any),
+  ]);
+  const pdfMake = pdfMakeModule.default || pdfMakeModule;
+  const vfsFonts = fontsModule.default || fontsModule;
+  pdfMake.vfs = vfsFonts?.pdfMake?.vfs ?? vfsFonts?.vfs ?? vfsFonts;
 
-  function formatExperienceForPDF(text: string) {
-    if (!text) return '';
-    const blocks = text.split(/\n\s*\n/);
-    return blocks.map(block => {
-      const lines = block.split('\n').filter((l: string) => l.trim() !== '');
-      if (lines.length === 0) return '';
-      const headers: string[] = [];
-      const bullets: string[] = [];
-      lines.forEach((line: string) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
-          bullets.push(trimmed);
-        } else if (bullets.length === 0) {
-          headers.push(trimmed);
-        } else {
-          bullets.push('• ' + trimmed);
-        }
-      });
-      let blockHtml = '<div style="margin-bottom: 24px;">';
-      if (headers.length > 0) {
-        blockHtml += `<div style="font-weight: bold; color: #000; font-size: 14px; text-transform: uppercase;">${parseText(headers[0])}</div>`;
-        if (headers.length >= 2) {
-          const company = parseText(headers[1]);
-          const date = headers.length >= 3 ? parseText(headers[2]) : '';
-          blockHtml += `
-          <table style="width: 100%; border-collapse: collapse; margin-top: 2px; margin-bottom: 8px;">
-            <tr>
-              <td style="font-weight: bold; color: #000; font-size: 13px; text-align: left; padding: 0;">${company}</td>
-              <td style="font-weight: bold; color: #000; font-size: 13px; text-align: right; padding: 0; white-space: nowrap;">${date}</td>
-            </tr>
-          </table>`;
-        } else {
-          blockHtml = blockHtml.replace('uppercase;">', 'uppercase; margin-bottom: 8px;">');
-        }
-      }
-      bullets.forEach((bullet: string) => {
-        const finalLine = bullet.startsWith('•') ? bullet : '• ' + bullet;
-        blockHtml += `<div style="margin-left: 14px; margin-bottom: 2px; font-weight: normal; color: #222; font-size: 13px; line-height: 1.4;">${parseText(finalLine)}</div>`;
-      });
-      blockHtml += '</div>';
-      return blockHtml;
-    }).join('');
-  }
+  const clean = (t: any) => !t ? '' : String(t)
+    .replace(/^#+\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1');
 
-  const h2S = 'font-size:13px;border-bottom:1.5px solid #111827;padding-bottom:3px;margin:16px 0 8px;letter-spacing:.5px;text-transform:uppercase;font-weight:bold;font-family:Arial,Helvetica,sans-serif;color:#111827;';
-  const pS  = 'margin:4px 0;font-size:12px;white-space:pre-wrap;text-align:justify;font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.5;';
+  const MARGIN = 42;
+  const LINE_W = 511;
 
-  const container = document.createElement('div');
-  Object.assign(container.style, {
-    position: 'fixed', left: '-9999px', top: '0',
-    width: '794px', background: '#ffffff',
-    fontFamily: 'Arial, Helvetica, sans-serif',
-    color: '#111827', lineHeight: '1.5',
-    paddingLeft: '57px', paddingRight: '57px',
-    boxSizing: 'border-box',
+  const sec = (label: string) => ({
+    stack: [
+      { text: label.split('').join(' '), fontSize: 10, bold: true, color: '#111827', characterSpacing: 1 },
+      { canvas: [{ type: 'line', x1: 0, y1: 2, x2: LINE_W, y2: 2, lineWidth: 1.5, lineColor: '#111827' }] },
+    ],
+    margin: [0, 12, 0, 6],
   });
 
-  container.innerHTML = `
-    <h1 style="text-align:center;font-size:24px;margin:0 0 6px;letter-spacing:0.5px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif;">${parseText(cv.name)}</h1>
-    <div style="text-align:center;font-size:11px;margin-bottom:20px;color:#374151;font-family:Arial,Helvetica,sans-serif;">ADDRESS: ${parseText(cv.address)} | PHONE: ${parseText(cv.phone)} | E-MAIL: ${parseText(cv.email)} | LinkedIn: ${parseText(cv.linkedin)}</div>
-    <div style="${h2S}">SUMMARY</div><p style="${pS}">${parseText(cv.summary)}</p>
-    <div style="${h2S}">PROFESSIONAL EXPERIENCE</div>
-    <div>${formatExperienceForPDF(cv.experience)}</div>
-    <div style="${h2S}">EDUCATION</div><p style="${pS}">${parseText(cv.education)}</p>
-    <div style="${h2S}">SKILLS</div><p style="${pS}"><b>Soft Skills:</b> ${parseText(cv.softSkills)}</p><p style="${pS}"><b>Technical Skills:</b> ${parseText(cv.technicalSkills)}</p>
-    <div style="${h2S}">INTERNSHIP AND COURSES</div><p style="${pS}">${parseText(cv.internshipCourses)}</p>
-    <div style="${h2S}">ADDITIONAL INFORMATION</div><p style="${pS}">${parseText(cv.additionalInfo)}</p>
-    <div style="${h2S}">LANGUAGE</div><p style="${pS}">${parseText(cv.language)}</p>
-    <div style="${h2S}">LICENSE</div><p style="${pS}">${parseText(cv.license)}</p>
-  `;
+  const content: any[] = [];
 
-  document.body.appendChild(container);
+  content.push({ text: clean(cv.name).toUpperCase(), fontSize: 20, bold: true, alignment: 'center', characterSpacing: 1, margin: [0, 0, 0, 3] });
 
-  try {
-    const html2canvas = (await import('html2canvas')).default;
-    const { default: jsPDF } = await import('jspdf');
+  const contact = [cv.address && `ADDRESS: ${clean(cv.address)}`, cv.phone && `PHONE: ${clean(cv.phone)}`, cv.email && `E-MAIL: ${clean(cv.email)}`, cv.linkedin && `LinkedIn: ${clean(cv.linkedin)}`].filter(Boolean).join(' | ');
+  content.push({ text: contact, fontSize: 9, color: '#374151', alignment: 'center', margin: [0, 0, 0, 14] });
 
-    const canvas = await html2canvas(container, {
-      scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, width: 794,
+  if (cv.summary) { content.push(sec('SUMMARY')); content.push({ text: clean(cv.summary), fontSize: 10, color: '#111827', margin: [0, 0, 0, 4] }); }
+
+  if (cv.experience) {
+    content.push(sec('PROFESSIONAL EXPERIENCE'));
+    clean(cv.experience).split(/\n\s*\n/).forEach((block: string) => {
+      const lines = block.split('\n').filter((l: string) => l.trim());
+      if (!lines.length) return;
+      const headers: string[] = [], bullets: string[] = [];
+      lines.forEach((line: string) => {
+        const t = line.trim();
+        if (t.startsWith('•') || t.startsWith('-') || t.startsWith('*')) bullets.push(t.replace(/^[-*•]\s*/, ''));
+        else if (!bullets.length) headers.push(t);
+        else bullets.push(t);
+      });
+      if (headers[0]) content.push({ text: headers[0].toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      if (headers[1]) content.push({ columns: [{ text: headers[1], fontSize: 10, bold: true }, { text: headers[2] || '', fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+      bullets.forEach((b: string) => content.push({ text: `• ${b}`, fontSize: 10, color: '#222', margin: [10, 0, 0, 1] }));
     });
-    document.body.removeChild(container);
-
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();   // 210mm
-    const pageH = doc.internal.pageSize.getHeight();  // 297mm
-    const marginMM = 15;
-    const usableHmm = pageH - marginMM * 2;           // 267mm per page
-    const pxPerMM = canvas.width / pageW;
-    const usableHpx = usableHmm * pxPerMM;
-
-    let yPx = 0;
-    let pageNum = 0;
-
-    while (yPx < canvas.height) {
-      if (pageNum > 0) doc.addPage();
-
-      const sliceHpx = Math.min(usableHpx, canvas.height - yPx);
-      const sliceHmm = sliceHpx / pxPerMM;
-
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = sliceHpx;
-      const ctx = sliceCanvas.getContext('2d') as CanvasRenderingContext2D;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      ctx.drawImage(canvas, 0, yPx, canvas.width, sliceHpx, 0, 0, canvas.width, sliceHpx);
-
-      doc.addImage(sliceCanvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, marginMM, pageW, sliceHmm, '', 'FAST');
-
-      yPx += sliceHpx;
-      pageNum++;
-    }
-
-    doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
-  } catch (err) {
-    if (document.body.contains(container)) document.body.removeChild(container);
-    throw err;
   }
+
+  if (cv.education) { content.push(sec('EDUCATION')); content.push({ text: clean(cv.education), fontSize: 10, color: '#111827', margin: [0, 0, 0, 4] }); }
+
+  if (cv.softSkills || cv.technicalSkills) {
+    content.push(sec('SKILLS'));
+    if (cv.softSkills) content.push({ text: [{ text: 'Soft Skills: ', bold: true }, clean(cv.softSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
+    if (cv.technicalSkills) content.push({ text: [{ text: 'Technical Skills: ', bold: true }, clean(cv.technicalSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
+  }
+
+  ([['INTERNSHIP AND COURSES', cv.internshipCourses], ['ADDITIONAL INFORMATION', cv.additionalInfo], ['LANGUAGE', cv.language], ['LICENSE', cv.license]] as [string, any][])
+    .forEach(([label, val]) => { if (val) { content.push(sec(label)); content.push({ text: clean(val), fontSize: 10, color: '#111827', margin: [0, 0, 0, 4] }); } });
+
+  pdfMake.createPdf({ pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], content }).download(`${title.replace(/\s+/g, '_')}.pdf`);
 }
 
 // ─── Animated Bar ─────────────────────────────────────────────────────────────
