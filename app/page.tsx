@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import StripeWrapper from './components/StripeWrapper';
+import UnlockButton from './components/UnlockButton';
 import ContactSection from './components/ContactSection';
 
 const PRICES = {
@@ -476,7 +476,6 @@ function OptimizationPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
   const [suggestedAchievements, setSuggestedAchievements] = useState([]);
   const [selectedAchievements, setSelectedAchievements] = useState([]);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
@@ -687,6 +686,8 @@ function OptimizationPage() {
             <p style={{fontWeight:700,fontSize:14,marginBottom:4}}>Quick Improvement</p>
             <p style={{color:'#94a3b8',fontSize:13}}>{result.quickImprovement}</p>
           </div>
+
+          {/* ── LOCKED CARD ── */}
           <div className="locked-card">
             <h3>Unlock Full CV Optimization — {PRICES.optimization}</h3>
             <p>Get the complete ATS keyword report, rewritten summary with professional sentences, improved experience section, skills optimization, and a downloadable PDF CV.</p>
@@ -697,29 +698,23 @@ function OptimizationPage() {
                   {loading ? '⏳ writing your CV...' : 'Generate Full Optimized CV'}
                 </button>
               </div>
-            ) : showPayment ? (
-              <StripeWrapper
-                service="optimization"
-                onSuccess={() => {
-                  setShowPayment(false);
-                  setPaymentConfirmed(true);
-                  setRemainingOutputs(3);
-                  setMessage('Payment confirmed. You can generate up to 3 optimized CVs.');
-                }}
-                onCancel={() => setShowPayment(false)}
-              />
             ) : (
-              <button onClick={() => {
-                if (!resume.trim() || !jobDescription.trim()) {
-                  setError('Please upload CV and paste job description first.');
-                  return;
-                }
-                setShowPayment(true);
-              }}>
-                Optimize My CV — {PRICES.optimization}
-              </button>
+              <UnlockButton
+                service="optimization"
+                label={`Optimize My CV — ${PRICES.optimization}`}
+                onBeforeRedirect={() => {
+                  if (!resume.trim() || !jobDescription.trim()) {
+                    throw new Error('Please upload your CV and paste the job description first.');
+                  }
+                  sessionStorage.setItem(
+                    'resuvanta_pending_optimization',
+                    JSON.stringify({ resume, jobDescription })
+                  );
+                }}
+              />
             )}
           </div>
+
         </div>
       )}
 
@@ -880,7 +875,6 @@ function BuilderWizard() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showBuilderPayment, setShowBuilderPayment] = useState(false);
   const [builder, setBuilder] = useState({
     targetJob:'',jobDescription:'',name:'',address:'',phone:'',email:'',linkedin:'',
     degree:'',university:'',graduationYear:'',educationCountry:'',
@@ -889,7 +883,6 @@ function BuilderWizard() {
   });
   const totalSteps = 7;
 
-  // Added Skills States Here
   const [suggestedSoftSkills, setSuggestedSoftSkills] = useState([]);
   const [selectedSoftSkills, setSelectedSoftSkills] = useState([]);
   const [suggestedTechnicalSkills, setSuggestedTechnicalSkills] = useState([]);
@@ -927,7 +920,6 @@ function BuilderWizard() {
       const dateB = new Date(b.endDate || b.startDate || '');
       return dateB.getTime() - dateA.getTime();
     });
-    
     return sorted.map(exp => {
       const r = exp.responsibilities.split('\n').map(x => x.trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '• Add main responsibilities here.';
       const a = exp.achievements.split('\n').map(x => x.trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '';
@@ -940,13 +932,11 @@ function BuilderWizard() {
       alert('You have used all 3 CV outputs for this payment session.');
       return; 
     }
-    
     if (!builder.targetJob || builder.targetJob.trim() === '') { 
       alert('Please enter a Target Job in Step 1 to generate correct skills.');
       setStep(1);
       return; 
     }
-
     setIsGenerating(true);
     try {
       const payload = {
@@ -955,23 +945,18 @@ function BuilderWizard() {
         jobDescription: builder.jobDescription,
         builderData: `Name: ${builder.name}\nAddress: ${builder.address}\nDegree: ${builder.degree}\nExperience:\n${formatExperience()}`
       };
-      
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.error || 'Failed to generate CV');
       }
-
       const { parsed: p } = await response.json();
-
       if (p?.suggestedSoftSkills) setSuggestedSoftSkills(p.suggestedSoftSkills);
       if (p?.suggestedTechnicalSkills) setSuggestedTechnicalSkills(p.suggestedTechnicalSkills);
-
       const cv = {
         name: p.name || builder.name || 'NAME', 
         address: p.address || builder.address || 'Not provided',
@@ -988,7 +973,6 @@ function BuilderWizard() {
         language: p.language || builder.languages || 'Not provided',
         license: p.license || builder.licenses || 'Not provided',
       };
-      
       setBuiltCV(cv);
       setRemainingOutputs(Math.max(0, 3 - increaseUsageCount('builder')));
     } catch(e) {
@@ -1060,28 +1044,30 @@ function BuilderWizard() {
       <div className="wizard-actions">
         {step>1&&<button className="secondary" onClick={()=>setStep(step-1)}>Back</button>}
         {step<totalSteps&&<button onClick={()=>setStep(step+1)}>Next</button>}
+
+        {/* ── BUILDER PAYMENT GATE ── */}
         {step===totalSteps&&<>
           {paymentConfirmed ? (
             <>
-              <button onClick={generatePaidBuilderCV} disabled={isGenerating}>{isGenerating ? '⏳ building your CV...' : 'Generate Paid CV Output'}</button>
+              <button onClick={generatePaidBuilderCV} disabled={isGenerating}>
+                {isGenerating ? '⏳ building your CV...' : 'Generate Paid CV Output'}
+              </button>
               <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
             </>
-          ) : showBuilderPayment ? (
-            <StripeWrapper
-              service="builder"
-              onSuccess={() => {
-                setShowBuilderPayment(false);
-                setPaymentConfirmed(true);
-                setRemainingOutputs(3);
-              }}
-              onCancel={() => setShowBuilderPayment(false)}
-            />
           ) : (
-            <button onClick={() => setShowBuilderPayment(true)}>
-              Unlock Resume Package
-            </button>
+            <UnlockButton
+              service="builder"
+              label={`Unlock Resume Package — ${PRICES.builder}`}
+              onBeforeRedirect={() => {
+                sessionStorage.setItem(
+                  'resuvanta_pending_builder',
+                  JSON.stringify({ builder })
+                );
+              }}
+            />
           )}
         </>}
+
       </div>
 
       {builtCV && (
@@ -1131,12 +1117,9 @@ function BuilderWizard() {
               onClick={() => {
                 let currentSoft = builtCV.softSkills ? builtCV.softSkills.split(',').map(s=>s.trim()) : [];
                 let currentTech = builtCV.technicalSkills ? builtCV.technicalSkills.split(',').map(s=>s.trim()) : [];
-                
                 const newSoft = [...new Set([...currentSoft, ...selectedSoftSkills])].filter(Boolean).join(' | ');
                 const newTech = [...new Set([...currentTech, ...selectedTechnicalSkills])].filter(Boolean).join(' | ');
-                
                 setBuiltCV({...builtCV, softSkills: newSoft, technicalSkills: newTech});
-                
                 setSuggestedSoftSkills([]);
                 setSuggestedTechnicalSkills([]);
                 setSelectedSoftSkills([]);
@@ -1173,7 +1156,7 @@ function BuilderPage() {
   );
 }
 
-// ─── LinkedIn Page (Complete Version with CV Upload & Expert Tips) ─────────────────
+// ─── LinkedIn Page ────────────────────────────────────────────────────────────
 function LinkedInPage() {
   const [targetRole, setTargetRole] = useState('');
   const [cvFile, setCvFile] = useState(null);
@@ -1182,7 +1165,6 @@ function LinkedInPage() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [fullLinkedInOutput, setFullLinkedInOutput] = useState(null);
   const [isGeneratingLinkedIn, setIsGeneratingLinkedIn] = useState(false);
-  const [showLinkedInPayment, setShowLinkedInPayment] = useState(false);
   const [fileError, setFileError] = useState('');
   const [fileLoading, setFileLoading] = useState(false);
 
@@ -1334,6 +1316,8 @@ function LinkedInPage() {
       {headline && <div className="preview-box single">
         <h3>Free Headline Preview</h3>
         <p>{headline}</p>
+
+        {/* ── LINKEDIN LOCKED CARD ── */}
         <div className="locked-card">
           <h3>Unlock LinkedIn Optimization — {PRICES.linkedin}</h3>
           <p>Get your professional headline, About section, experience wording, skills list, and recruiter search keywords.</p>
@@ -1341,27 +1325,23 @@ function LinkedInPage() {
             <button onClick={generateFullLinkedInOptimization} disabled={isGeneratingLinkedIn}>
               {isGeneratingLinkedIn ? '⏳ optimizing your profile...' : 'Generate Full LinkedIn Optimization'}
             </button>
-          ) : showLinkedInPayment ? (
-            <StripeWrapper
-              service="linkedin"
-              onSuccess={() => {
-                setShowLinkedInPayment(false);
-                setPaymentConfirmed(true);
-              }}
-              onCancel={() => setShowLinkedInPayment(false)}
-            />
           ) : (
-            <button onClick={() => {
-              if (!targetRole.trim() || !cvText) {
-                alert('Please enter your target role and upload your CV first.');
-                return;
-              }
-              setShowLinkedInPayment(true);
-            }}>
-              Optimize My LinkedIn — {PRICES.linkedin}
-            </button>
+            <UnlockButton
+              service="linkedin"
+              label={`Optimize My LinkedIn — ${PRICES.linkedin}`}
+              onBeforeRedirect={() => {
+                if (!targetRole.trim() || !cvText) {
+                  throw new Error('Please enter your target role and upload your CV first.');
+                }
+                sessionStorage.setItem(
+                  'resuvanta_pending_linkedin',
+                  JSON.stringify({ targetRole, cvText })
+                );
+              }}
+            />
           )}
         </div>
+
       </div>}
 
       {fullLinkedInOutput && <div className="paid-output">
@@ -1487,11 +1467,21 @@ function loadScript(src) {
 export default function App() {
   const [page, setPage] = useState('home');
   const [darkMode, setDarkMode] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(()=>{
     const params = new URLSearchParams(window.location.search);
     const selectedPage = params.get('page');
-    if (['optimization','builder','linkedin','pricing','faq'].includes(selectedPage)) setPage(selectedPage);
+    const service = params.get('service');
+    const payment = params.get('payment');
+    if (['optimization','builder','linkedin','pricing','faq'].includes(selectedPage)) {
+      setPage(selectedPage);
+    } else if (payment === 'success' && service && ['optimization','builder','linkedin'].includes(service)) {
+      setPage(service);
+    }
+    if (payment || service) {
+      window.history.replaceState({}, '', '/');
+    }
   },[]);
 
   function renderPage() {
@@ -1510,15 +1500,18 @@ export default function App() {
         <button className="brandButton" onClick={()=>setPage('home')}>
           <BrandLogo darkMode={darkMode}/>
         </button>
-        <nav>
-          <button onClick={()=>setPage('home')}>Home</button>
-          <button onClick={()=>setPage('optimization')}>CV Optimization</button>
-          <button onClick={()=>setPage('builder')}>CV Builder</button>
-          <button onClick={()=>setPage('linkedin')}>LinkedIn</button>
-          <button onClick={()=>setPage('pricing')}>Our Services</button>
-          <button onClick={()=>setPage('faq')}>FAQ</button>
+        <nav className={menuOpen ? 'navOpen' : ''}>
+          <button onClick={()=>{setPage('home');setMenuOpen(false);}}>Home</button>
+          <button onClick={()=>{setPage('optimization');setMenuOpen(false);}}>CV Optimization</button>
+          <button onClick={()=>{setPage('builder');setMenuOpen(false);}}>CV Builder</button>
+          <button onClick={()=>{setPage('linkedin');setMenuOpen(false);}}>LinkedIn</button>
+          <button onClick={()=>{setPage('pricing');setMenuOpen(false);}}>Our Services</button>
+          <button onClick={()=>{setPage('faq');setMenuOpen(false);}}>FAQ</button>
         </nav>
         <div className="headerActions">
+          <button className="hamburgerBtn" onClick={()=>setMenuOpen(!menuOpen)} aria-label="Toggle menu">
+            {menuOpen ? '✕' : '☰'}
+          </button>
           <button className="modeBtn iconModeBtn" onClick={()=>setDarkMode(!darkMode)} title={darkMode?'Switch to light mode':'Switch to dark mode'}>
             {darkMode?'☀️':'🌙'}
           </button>
