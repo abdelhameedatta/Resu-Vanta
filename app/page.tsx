@@ -220,15 +220,19 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = () => resolve(); s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
 async function openPDFWindow(cv: any, title = 'Optimized CV') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [pdfMakeModule, fontsModule]: [any, any] = await Promise.all([
-    import(/* webpackChunkName: "pdfmake" */ 'pdfmake/build/pdfmake'),
-    import(/* webpackChunkName: "vfs_fonts" */ 'pdfmake/build/vfs_fonts'),
-  ]);
-  const pdfMake = pdfMakeModule.default || pdfMakeModule;
-  const vfsFonts = fontsModule.default || fontsModule;
-  pdfMake.vfs = vfsFonts?.pdfMake?.vfs ?? vfsFonts?.vfs ?? vfsFonts;
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js');
+  const pdfMake = (window as any).pdfMake;
 
   const clean = (t: any) => !t ? '' : String(t)
     .replace(/^#+\s*/gm, '')
