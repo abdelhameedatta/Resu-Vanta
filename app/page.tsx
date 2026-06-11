@@ -374,51 +374,152 @@ function BrandLogo({ darkMode, footer=false }) {
   );
 }
 
+// ─── Home Animated Headline ───────────────────────────────────────────────────
+function AnimatedHeadline() {
+  const words = ['A', 'stronger', 'CV.', 'A', 'faster', 'job', 'search.'];
+  const greenIndex = 4;
+  const breakAfter = [2, 4];
+  const [visible, setVisible] = useState([]);
+  useEffect(() => {
+    words.forEach((_, i) => {
+      setTimeout(() => setVisible(v => [...v, i]), 300 + i * 110);
+    });
+  }, []);
+  let wordIdx = 0;
+  const lines = [[0,1,2],[3,4],[5,6]];
+  return (
+    <h1 className="rv-headline">
+      {lines.map((line, li) => (
+        <span key={li} className="rv-headline-line">
+          {line.map((wi) => (
+            <span
+              key={wi}
+              className={`rv-word${wi === greenIndex ? ' rv-word-green' : ''}${visible.includes(wi) ? ' rv-word-visible' : ''}`}
+            >
+              {words[wi]}
+            </span>
+          ))}
+          {li < lines.length - 1 && <br/>}
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+// ─── Home Bar Chart ───────────────────────────────────────────────────────────
+function HomeBarChart() {
+  const bars = [
+    { label: 'Keywords',       target: 78, color: '#2DB34A' },
+    { label: 'Formatting',     target: 65, color: '#5BC97A' },
+    { label: 'Impact language',target: 71, color: '#2DB34A' },
+    { label: 'ATS compatibility',target:84, color: '#5BC97A' },
+    { label: 'Overall score',  target: 76, color: '#1a8c35' },
+  ];
+  const [vals, setVals] = useState(bars.map(() => 0));
+  useEffect(() => {
+    let start = null;
+    const dur = 1800;
+    function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+    function frame(ts) {
+      if (!start) start = ts;
+      const prog = Math.min((ts - start) / dur, 1);
+      setVals(bars.map((b, i) => {
+        const delay = i * 0.1;
+        const lp = Math.max(0, Math.min(1, (prog - delay) / (1 - delay)));
+        return Math.round(b.target * easeOut(lp));
+      }));
+      if (prog < 1) requestAnimationFrame(frame);
+    }
+    const t = setTimeout(() => requestAnimationFrame(frame), 600);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="rv-chart-box">
+      <div className="rv-chart-header">
+        <div>
+          <div className="rv-chart-title">CV improvement breakdown</div>
+          <div className="rv-chart-sub">Average results after optimization</div>
+        </div>
+        <div className="rv-chart-badge">After ResuVanta</div>
+      </div>
+      <div className="rv-before-after">
+        <span className="rv-ba rv-ba-before">Before</span>
+        <span className="rv-ba rv-ba-after">After</span>
+      </div>
+      {bars.map((b, i) => (
+        <div key={i} className="rv-bar-row">
+          <div className="rv-bar-label">{b.label}</div>
+          <div className="rv-bar-track">
+            <div className="rv-bar-fill" style={{ width: `${vals[i]}%`, background: b.color }} />
+          </div>
+          <div className="rv-bar-val">{vals[i]}%</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Home ─────────────────────────────────────────────────────────────────────
 function Home({ setPage }) {
   return (
     <>
-      <section className="home-hero">
-        <div className="home-content">
-          <p className="label">ATS-friendly CV tools</p>
-          <h1>Build, optimize, and improve your CV for the job you want.</h1>
-          <p>Resuvanta helps job seekers check their CV, discover missing keywords, build a professional CV from scratch, and improve their LinkedIn profile for recruiters.</p>
-          <div className="hero-actions">
-            <button onClick={()=>setPage('optimization')}>Optimize My CV</button>
-            <button className="secondary" onClick={()=>setPage('builder')}>Build New CV</button>
+      {/* ── Hero ── */}
+      <section className="rv-hero">
+        <div className="rv-hero-left">
+          <div className="rv-eyebrow">
+            <span className="rv-eyebrow-dot" />
+            <span className="rv-eyebrow-text">Career development platform</span>
+          </div>
+          <AnimatedHeadline />
+          <p className="rv-subline">
+            ResuVanta reviews every section of your CV and shows you exactly where you stand — and how far you can go.
+          </p>
+          <div className="rv-cta-row">
+            <button className="rv-btn-primary" onClick={() => setPage('optimization')}>Analyze my CV — free</button>
+            <button className="rv-btn-secondary" onClick={() => setPage('pricing')}>See our services</button>
+          </div>
+          <div className="rv-trust-row">
+            <div className="rv-trust-item"><span className="rv-trust-dot" />No sign-up to start</div>
+            <div className="rv-trust-item"><span className="rv-trust-dot" />Results in under 60 seconds</div>
           </div>
         </div>
-        <div className="home-card">
-          <h3>What you can do</h3>
-          <ul>
-            <li>Check how well your CV matches a job description</li>
-            <li>See missing ATS keywords before applying</li>
-            <li>Build a professional CV step by step</li>
-            <li>Improve your LinkedIn profile for recruiters</li>
-            <li>Download your final CV as PDF</li>
-          </ul>
-        </div>
-      </section>
-      <section className="home-section">
-        <h2>Our Services</h2>
-        <div className="service-grid">
-          <div className="service-card">
-            <h3>CV Optimization</h3><h2>{PRICES.optimization}</h2>
-            <p>Upload your current CV and paste the job description. Get a free preview first, then unlock full optimization.</p>
-            <button onClick={()=>setPage('optimization')}>Start CV Optimization</button>
-          </div>
-          <div className="service-card featured">
-            <h3>CV Builder + Optimization</h3><h2>{PRICES.builder}</h2>
-            <p>No CV yet? Answer guided questions and generate an optimized, ATS-friendly CV for your target job.</p>
-            <button onClick={()=>setPage('builder')}>Build & Optimize CV</button>
-          </div>
-          <div className="service-card">
-            <h3>LinkedIn Optimization</h3><h2>{PRICES.linkedin}</h2>
-            <p>Improve your LinkedIn headline, About section, skills, and recruiter search keywords.</p>
-            <button onClick={()=>setPage('linkedin')}>Optimize LinkedIn</button>
-          </div>
+        <div className="rv-hero-right">
+          <HomeBarChart />
         </div>
       </section>
+
+      {/* ── Service Cards ── */}
+      <section className="rv-cards-section">
+        <div className="rv-cards-label">What we offer</div>
+        <div className="rv-cards-grid">
+          <div className="rv-card rv-card-featured">
+            <div className="rv-card-top rv-card-top-green" />
+            <div className="rv-card-num">01</div>
+            <div className="rv-card-title">CV Optimization</div>
+            <div className="rv-card-price">{PRICES.optimization}</div>
+            <div className="rv-card-desc">Upload your CV and get a full breakdown — what works, what's missing, and exactly how to fix it.</div>
+            <button className="rv-card-btn" onClick={() => setPage('optimization')}>Unlock access →</button>
+          </div>
+          <div className="rv-card">
+            <div className="rv-card-top" />
+            <div className="rv-card-num">02</div>
+            <div className="rv-card-title">CV Builder</div>
+            <div className="rv-card-price">{PRICES.builder}</div>
+            <div className="rv-card-desc">Start from zero and finish with a clean, recruiter-ready document in minutes.</div>
+            <button className="rv-card-btn" onClick={() => setPage('builder')}>Unlock access →</button>
+          </div>
+          <div className="rv-card">
+            <div className="rv-card-top" />
+            <div className="rv-card-num">03</div>
+            <div className="rv-card-title">LinkedIn</div>
+            <div className="rv-card-price">{PRICES.linkedin}</div>
+            <div className="rv-card-desc">Fine-tune your headline, summary, and keywords so the right people find you first.</div>
+            <button className="rv-card-btn" onClick={() => setPage('linkedin')}>Unlock access →</button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
       <section className="home-section how-it-works">
         <h2>How it works</h2>
         <div className="steps-grid">
@@ -428,17 +529,7 @@ function Home({ setPage }) {
           <div><span>4</span><h3>Download PDF</h3><p>Your final output is delivered as a clean PDF-ready CV.</p></div>
         </div>
       </section>
-      <section className="home-section">
-        <h2>Why use Resuvanta?</h2>
-        <div className="features-grid">
-          <div>ATS-friendly structure</div>
-          <div>Job description keyword matching</div>
-          <div>Step-by-step CV builder</div>
-          <div>Professional template output</div>
-          <div>Accurate sentences</div>
-          <div>LinkedIn optimization</div>
-        </div>
-      </section>
+
       <ContactSection />
     </>
   );
