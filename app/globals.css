@@ -2193,3 +2193,410 @@ body {
     box-sizing: border-box !important;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   RESUVANTA — NEW HOME DESIGN (Warm Minimal)
+   Only affects the homepage hero + service cards
+   ═══════════════════════════════════════════════ */
+
+/* ── Hero ── */
+.rv-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  padding: 60px 6% 48px;
+  background: #F8F6F1;
+}
+
+.site.dark .rv-hero {
+  background: #10121A;
+}
+
+.rv-hero-left {}
+.rv-hero-right {}
+
+/* Eyebrow */
+.rv-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #EDE8DF;
+  border: 0.5px solid #D9D2C4;
+  border-radius: 20px;
+  padding: 4px 12px 4px 8px;
+  margin-bottom: 20px;
+}
+
+.site.dark .rv-eyebrow {
+  background: #1e2028;
+  border-color: #2a2d38;
+}
+
+.rv-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  background: #2DB34A;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.rv-eyebrow-text {
+  font-size: 11px;
+  color: #7a6a52;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.site.dark .rv-eyebrow-text {
+  color: #888;
+}
+
+/* Headline */
+.rv-headline {
+  font-size: 42px;
+  font-weight: 700;
+  color: #1C1A16;
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  margin: 0 0 16px;
+}
+
+.site.dark .rv-headline {
+  color: #f0f0ee;
+}
+
+.rv-headline-line {
+  display: block;
+}
+
+.rv-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  margin-right: 0.22em;
+}
+
+.rv-word.rv-word-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rv-word-green {
+  color: #2DB34A;
+}
+
+/* Subline */
+.rv-subline {
+  font-size: 15px;
+  color: #888;
+  line-height: 1.65;
+  margin-bottom: 26px;
+  max-width: 440px;
+}
+
+/* CTA */
+.rv-cta-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.rv-btn-primary {
+  background: #1C1A16 !important;
+  color: #F8F6F1 !important;
+  font-size: 13px !important;
+  padding: 10px 22px !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer;
+}
+
+.rv-btn-primary:hover {
+  background: #333 !important;
+  transform: translateY(-1px);
+}
+
+.rv-btn-secondary {
+  background: transparent !important;
+  color: #666 !important;
+  font-size: 13px !important;
+  padding: 10px 20px !important;
+  border-radius: 7px !important;
+  font-weight: 400 !important;
+  border: 0.5px solid #CEC8BC !important;
+  cursor: pointer;
+}
+
+.site.dark .rv-btn-secondary {
+  border-color: #333 !important;
+  color: #aaa !important;
+}
+
+.rv-btn-secondary:hover {
+  background: #f0ede6 !important;
+  transform: translateY(-1px);
+}
+
+/* Trust */
+.rv-trust-row {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.rv-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #999;
+}
+
+.rv-trust-dot {
+  width: 5px;
+  height: 5px;
+  background: #2DB34A;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Chart Box ── */
+.rv-chart-box {
+  background: #fff;
+  border: 0.5px solid #E5E0D6;
+  border-radius: 14px;
+  padding: 24px 22px;
+}
+
+.site.dark .rv-chart-box {
+  background: #18181f;
+  border-color: #2a2d38;
+}
+
+.rv-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.rv-chart-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C1A16;
+}
+
+.site.dark .rv-chart-title {
+  color: #ddd;
+}
+
+.rv-chart-sub {
+  font-size: 11px;
+  color: #bbb;
+  margin-top: 3px;
+}
+
+.rv-chart-badge {
+  background: #EBF5EE;
+  border: 0.5px solid #c3e6cb;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #2a6e3a;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rv-before-after {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.rv-ba {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.rv-ba-before {
+  background: #F0EDE6;
+  color: #bbb;
+}
+
+.rv-ba-after {
+  background: #EBF5EE;
+  color: #2a6e3a;
+}
+
+.rv-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rv-bar-row:last-child { margin-bottom: 0; }
+
+.rv-bar-label {
+  font-size: 11px;
+  color: #aaa;
+  width: 110px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.rv-bar-track {
+  flex: 1;
+  background: #F0EDE6;
+  border-radius: 4px;
+  height: 7px;
+  overflow: hidden;
+}
+
+.site.dark .rv-bar-track {
+  background: #222530;
+}
+
+.rv-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  width: 0;
+  transition: width 0.05s linear;
+}
+
+.rv-bar-val {
+  font-size: 11px;
+  color: #888;
+  width: 32px;
+  flex-shrink: 0;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+/* ── Service Cards ── */
+.rv-cards-section {
+  padding: 0 6% 48px;
+  background: #F8F6F1;
+}
+
+.site.dark .rv-cards-section {
+  background: #10121A;
+}
+
+.rv-cards-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #bbb;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+
+.rv-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.rv-card {
+  background: #fff;
+  border: 0.5px solid #E5E0D6;
+  border-radius: 12px;
+  padding: 22px 20px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.site.dark .rv-card {
+  background: #18181f;
+  border-color: #2a2d38;
+}
+
+.rv-card-top {
+  height: 2px;
+  background: #E5E0D6;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+
+.rv-card-top-green { background: #2DB34A; }
+
+.rv-card-num {
+  font-size: 10px;
+  color: #ccc;
+  font-family: monospace;
+  margin-bottom: 10px;
+}
+
+.rv-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1C1A16;
+  margin-bottom: 4px;
+}
+
+.site.dark .rv-card-title { color: #eee; }
+
+.rv-card-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2DB34A;
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
+}
+
+.rv-card-desc {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.55;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+.rv-card-btn {
+  background: transparent !important;
+  color: #2DB34A !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  text-align: left !important;
+  cursor: pointer;
+  width: fit-content !important;
+}
+
+.rv-card-btn:hover {
+  transform: translateX(3px) !important;
+  background: transparent !important;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .rv-hero {
+    grid-template-columns: 1fr;
+    padding: 40px 5% 32px;
+    gap: 28px;
+  }
+
+  .rv-headline {
+    font-size: 30px;
+  }
+
+  .rv-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rv-cards-section {
+    padding: 0 5% 36px;
+  }
+}
