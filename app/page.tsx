@@ -255,22 +255,19 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
     clean(cv.experience).split(/\n\s*\n/).forEach((block: string) => {
       const lines = block.split('\n').filter((l: string) => l.trim());
       if (!lines.length) return;
-      const headers: string[] = [], bullets: string[] = [];
-      lines.forEach((line: string) => {
+      const firstLine = lines[0].trim().replace(/^[-*•]\s*/, '');
+      const rest = lines.slice(1);
+      const parts = firstLine.split('|').map((s: string) => s.trim());
+      const jobTitle = parts[0];
+      const company = parts.length >= 3 ? parts.slice(1, -1).join(' | ') : (parts[1] || '');
+      const date = parts.length >= 2 ? parts[parts.length - 1] : '';
+      const bullets: string[] = [];
+      rest.forEach((line: string) => {
         const t = line.trim();
-        if (t.startsWith('•') || t.startsWith('- ') || t.startsWith('* ')) {
-          const body = t.replace(/^[-*•]\s*/, '');
-          if (headers.length === 0 && body.includes('|')) {
-            const parts = body.split('|').map((s: string) => s.trim());
-            headers.push(parts[0]);
-            if (parts.length >= 3) { headers.push(parts.slice(1, -1).join(' | ')); headers.push(parts[parts.length - 1]); }
-            else if (parts.length === 2) headers.push(parts[1]);
-          } else { bullets.push(body); }
-        } else if (!bullets.length) headers.push(t);
-        else bullets.push(t);
+        bullets.push(t.replace(/^[-*•]\s*/, ''));
       });
-      if (headers[0]) content.push({ text: headers[0].toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
-      if (headers[1]) content.push({ columns: [{ text: headers[1], fontSize: 10, bold: true }, { text: headers[2] || '', fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+      if (jobTitle) content.push({ text: jobTitle.toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      if (company || date) content.push({ columns: [{ text: company, fontSize: 10, bold: true }, { text: date, fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
       bullets.forEach((b: string) => content.push({ text: `• ${b}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] }));
     });
   }
