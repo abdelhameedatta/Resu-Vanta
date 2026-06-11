@@ -1535,7 +1535,7 @@ function loadScript(src) {
 // ─── App Root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [page, setPage] = useState('home');
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
 useEffect(()=>{
