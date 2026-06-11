@@ -258,8 +258,15 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
       const headers: string[] = [], bullets: string[] = [];
       lines.forEach((line: string) => {
         const t = line.trim();
-        if (t.startsWith('•') || t.startsWith('-') || t.startsWith('*')) bullets.push(t.replace(/^[-*•]\s*/, ''));
-        else if (!bullets.length) headers.push(t);
+        if (t.startsWith('•') || t.startsWith('- ') || t.startsWith('* ')) {
+          const body = t.replace(/^[-*•]\s*/, '');
+          if (headers.length === 0 && body.includes('|')) {
+            const parts = body.split('|').map((s: string) => s.trim());
+            headers.push(parts[0]);
+            if (parts.length >= 3) { headers.push(parts.slice(1, -1).join(' | ')); headers.push(parts[parts.length - 1]); }
+            else if (parts.length === 2) headers.push(parts[1]);
+          } else { bullets.push(body); }
+        } else if (!bullets.length) headers.push(t);
         else bullets.push(t);
       });
       if (headers[0]) content.push({ text: headers[0].toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
