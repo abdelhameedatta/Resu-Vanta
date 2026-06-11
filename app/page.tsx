@@ -235,7 +235,7 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
 
   const sec = (label: string) => ({
     stack: [
-      { text: label.split('').join(' '), fontSize: 10, bold: true, color: '#111827', characterSpacing: 1 },
+      { text: label, fontSize: 10, bold: true, color: '#111827' },
       { canvas: [{ type: 'line', x1: 0, y1: 2, x2: LINE_W, y2: 2, lineWidth: 1.5, lineColor: '#111827' }] },
     ],
     margin: [0, 12, 0, 6],
@@ -248,7 +248,7 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
   const contact = [cv.address && `ADDRESS: ${clean(cv.address)}`, cv.phone && `PHONE: ${clean(cv.phone)}`, cv.email && `E-MAIL: ${clean(cv.email)}`, cv.linkedin && `LinkedIn: ${clean(cv.linkedin)}`].filter(Boolean).join(' | ');
   content.push({ text: contact, fontSize: 9, color: '#374151', alignment: 'center', margin: [0, 0, 0, 14] });
 
-  if (cv.summary) { content.push(sec('SUMMARY')); content.push({ text: clean(cv.summary), fontSize: 10, color: '#111827', margin: [0, 0, 0, 4] }); }
+  if (cv.summary) { content.push(sec('SUMMARY')); content.push({ text: clean(cv.summary), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
 
   if (cv.experience) {
     content.push(sec('PROFESSIONAL EXPERIENCE'));
@@ -264,11 +264,11 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
       });
       if (headers[0]) content.push({ text: headers[0].toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
       if (headers[1]) content.push({ columns: [{ text: headers[1], fontSize: 10, bold: true }, { text: headers[2] || '', fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
-      bullets.forEach((b: string) => content.push({ text: `• ${b}`, fontSize: 10, color: '#222', margin: [10, 0, 0, 1] }));
+      bullets.forEach((b: string) => content.push({ text: `• ${b}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] }));
     });
   }
 
-  if (cv.education) { content.push(sec('EDUCATION')); content.push({ text: clean(cv.education), fontSize: 10, color: '#111827', margin: [0, 0, 0, 4] }); }
+  if (cv.education) { content.push(sec('EDUCATION')); content.push({ text: clean(cv.education), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
 
   if (cv.softSkills || cv.technicalSkills) {
     content.push(sec('SKILLS'));
@@ -277,7 +277,7 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
   }
 
   ([['INTERNSHIP AND COURSES', cv.internshipCourses], ['ADDITIONAL INFORMATION', cv.additionalInfo], ['LANGUAGE', cv.language], ['LICENSE', cv.license]] as [string, any][])
-    .forEach(([label, val]) => { if (val) { content.push(sec(label)); content.push({ text: clean(val), fontSize: 10, color: '#111827', margin: [0, 0, 0, 4] }); } });
+    .forEach(([label, val]) => { if (val) { content.push(sec(label)); content.push({ text: clean(val), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); } });
 
   pdfMake.createPdf({ pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], content }).download(`${title.replace(/\s+/g, '_')}.pdf`);
 }
