@@ -279,7 +279,7 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
   ([['INTERNSHIP AND COURSES', cv.internshipCourses], ['ADDITIONAL INFORMATION', cv.additionalInfo], ['LANGUAGE', cv.language], ['LICENSE', cv.license]] as [string, any][])
     .forEach(([label, val]) => { if (val) { content.push(sec(label)); content.push({ text: clean(val), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); } });
 
-  pdfMake.createPdf({ pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], content }).download(`${title.replace(/\s+/g, '_')}.pdf`);
+  pdfMake.createPdf({ pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], defaultStyle: { font: 'Roboto' }, content }).download(`${title.replace(/\s+/g, '_')}.pdf`);
 }
 
 // ─── Animated Bar ─────────────────────────────────────────────────────────────
