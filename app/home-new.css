@@ -2,26 +2,28 @@
    home-new.css — ResuVanta New Home Design
    ═══════════════════════════════════════════ */
 
-/* Force light background on hero regardless of dark mode */
-.rv-hero,
+/* Override site background for home sections only */
+.site .rv-hero,
 .site.dark .rv-hero {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  align-items: center;
-  padding: 60px 6% 48px;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 40px !important;
+  align-items: center !important;
+  padding: 60px 6% 48px !important;
   background: #F8F6F1 !important;
+  color: #1C1A16 !important;
 }
 
-.rv-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: #EDE8DF;
-  border: 0.5px solid #D9D2C4;
-  border-radius: 20px;
-  padding: 4px 12px 4px 8px;
-  margin-bottom: 20px;
+.site .rv-eyebrow,
+.site.dark .rv-eyebrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  background: #EDE8DF !important;
+  border: 0.5px solid #D9D2C4 !important;
+  border-radius: 20px !important;
+  padding: 4px 12px 4px 8px !important;
+  margin-bottom: 20px !important;
 }
 
 .rv-eyebrow-dot {
@@ -34,20 +36,20 @@
 }
 
 .rv-eyebrow-text {
-  font-size: 11px;
-  color: #7a6a52;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 11px !important;
+  color: #7a6a52 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em !important;
 }
 
-.rv-headline,
+.site .rv-headline,
 .site.dark .rv-headline {
-  font-size: 42px;
-  font-weight: 700;
+  font-size: 42px !important;
+  font-weight: 700 !important;
   color: #1C1A16 !important;
-  line-height: 1.1;
-  letter-spacing: -0.05em;
-  margin: 0 0 16px;
+  line-height: 1.1 !important;
+  letter-spacing: -0.05em !important;
+  margin: 0 0 16px !important;
 }
 
 .rv-headline-line {
@@ -63,31 +65,32 @@
 }
 
 .rv-word.rv-word-visible {
-  opacity: 1;
-  transform: translateY(0);
+  opacity: 1 !important;
+  transform: translateY(0) !important;
 }
 
 .rv-word-green {
   color: #2DB34A !important;
 }
 
-.rv-subline {
-  font-size: 15px;
-  color: #888 !important;
-  line-height: 1.65;
-  margin-bottom: 26px;
-  max-width: 440px;
+.site .rv-subline,
+.site.dark .rv-subline {
+  font-size: 15px !important;
+  color: #666 !important;
+  line-height: 1.65 !important;
+  margin-bottom: 26px !important;
+  max-width: 440px !important;
 }
 
 .rv-cta-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
+  display: flex !important;
+  gap: 10px !important;
+  align-items: center !important;
+  margin-bottom: 24px !important;
+  flex-wrap: wrap !important;
 }
 
-.rv-btn-primary,
+.site .rv-btn-primary,
 .site.dark .rv-btn-primary {
   background: #1C1A16 !important;
   color: #F8F6F1 !important;
@@ -96,44 +99,35 @@
   border-radius: 7px !important;
   font-weight: 600 !important;
   border: none !important;
-  cursor: pointer;
+  cursor: pointer !important;
+  box-shadow: none !important;
 }
 
-.rv-btn-primary:hover {
-  background: #333 !important;
-  transform: translateY(-1px);
-}
-
-.rv-btn-secondary,
+.site .rv-btn-secondary,
 .site.dark .rv-btn-secondary {
   background: transparent !important;
-  color: #666 !important;
+  color: #555 !important;
   font-size: 13px !important;
   padding: 10px 20px !important;
   border-radius: 7px !important;
   font-weight: 400 !important;
   border: 0.5px solid #CEC8BC !important;
-  cursor: pointer;
+  cursor: pointer !important;
   box-shadow: none !important;
 }
 
-.rv-btn-secondary:hover {
-  background: #f0ede6 !important;
-  transform: translateY(-1px);
-}
-
 .rv-trust-row {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
 }
 
 .rv-trust-item {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: #999;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-size: 12px !important;
+  color: #999 !important;
 }
 
 .rv-trust-dot {
@@ -146,12 +140,13 @@
 }
 
 /* Chart */
-.rv-chart-box,
+.site .rv-chart-box,
 .site.dark .rv-chart-box {
   background: #fff !important;
   border: 0.5px solid #E5E0D6 !important;
-  border-radius: 14px;
-  padding: 24px 22px;
+  border-radius: 14px !important;
+  padding: 24px 22px !important;
+  color: #1C1A16 !important;
 }
 
 .rv-chart-header {
@@ -161,10 +156,10 @@
   margin-bottom: 18px;
 }
 
-.rv-chart-title,
+.site .rv-chart-title,
 .site.dark .rv-chart-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12px !important;
+  font-weight: 600 !important;
   color: #1C1A16 !important;
 }
 
@@ -217,13 +212,13 @@
   text-align: right;
 }
 
-.rv-bar-track,
+.site .rv-bar-track,
 .site.dark .rv-bar-track {
-  flex: 1;
+  flex: 1 !important;
   background: #F0EDE6 !important;
-  border-radius: 4px;
-  height: 7px;
-  overflow: hidden;
+  border-radius: 4px !important;
+  height: 7px !important;
+  overflow: hidden !important;
 }
 
 .rv-bar-fill {
@@ -243,9 +238,9 @@
 }
 
 /* Cards */
-.rv-cards-section,
+.site .rv-cards-section,
 .site.dark .rv-cards-section {
-  padding: 0 6% 48px;
+  padding: 0 6% 48px !important;
   background: #F8F6F1 !important;
 }
 
@@ -264,14 +259,15 @@
   gap: 14px;
 }
 
-.rv-card,
+.site .rv-card,
 .site.dark .rv-card {
   background: #fff !important;
   border: 0.5px solid #E5E0D6 !important;
-  border-radius: 12px;
-  padding: 22px 20px 18px;
-  display: flex;
-  flex-direction: column;
+  border-radius: 12px !important;
+  padding: 22px 20px 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: none !important;
 }
 
 .rv-card-top {
@@ -285,12 +281,12 @@
 
 .rv-card-num { font-size: 10px; color: #ccc; font-family: monospace; margin-bottom: 10px; }
 
-.rv-card-title,
+.site .rv-card-title,
 .site.dark .rv-card-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 14px !important;
+  font-weight: 600 !important;
   color: #1C1A16 !important;
-  margin-bottom: 4px;
+  margin-bottom: 4px !important;
 }
 
 .rv-card-price {
@@ -309,37 +305,31 @@
   flex: 1;
 }
 
-.rv-card-btn,
+.site .rv-card-btn,
 .site.dark .rv-card-btn {
   background: transparent !important;
   color: #2DB34A !important;
   font-size: 12px !important;
   font-weight: 600 !important;
   padding: 0 !important;
-  border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
   text-align: left !important;
-  cursor: pointer;
+  cursor: pointer !important;
   width: fit-content !important;
-}
-
-.rv-card-btn:hover {
-  transform: translateX(3px) !important;
-  background: transparent !important;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .rv-hero,
+  .site .rv-hero,
   .site.dark .rv-hero {
-    grid-template-columns: 1fr;
-    padding: 40px 5% 32px;
-    gap: 28px;
+    grid-template-columns: 1fr !important;
+    padding: 40px 5% 32px !important;
+    gap: 28px !important;
   }
-  .rv-headline,
-  .site.dark .rv-headline { font-size: 30px; }
-  .rv-cards-grid { grid-template-columns: 1fr; }
-  .rv-cards-section,
-  .site.dark .rv-cards-section { padding: 0 5% 36px; }
+  .site .rv-headline,
+  .site.dark .rv-headline { font-size: 28px !important; }
+  .rv-cards-grid { grid-template-columns: 1fr !important; }
+  .site .rv-cards-section,
+  .site.dark .rv-cards-section { padding: 0 5% 36px !important; }
 }
