@@ -1581,7 +1581,7 @@ useEffect(()=>{
           <button className="hamburgerBtn" onClick={()=>setMenuOpen(!menuOpen)} aria-label="Toggle menu">
             {menuOpen ? '✕' : '☰'}
           </button>
-          <button className="modeBtn iconModeBtn" onClick={()=>setDarkMode(!darkMode)} title={darkMode?'Switch to light mode':'Switch to dark mode'}>
+          <button className="modeBtn iconModeBtn" style={{display:'none'}} onClick={()=>setDarkMode(!darkMode)}>
             {darkMode?'☀️':'🌙'}
           </button>
         </div>
