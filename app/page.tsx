@@ -307,10 +307,10 @@ function AnimatedBar({ label, value, color, delay = 0 }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-        <span style={{ fontSize:14, color:'#94a3b8' }}>{label}</span>
-        <span style={{ fontSize:15, fontWeight:700, color:'#f1f5f9' }}>{displayed}%</span>
+        <span style={{ fontSize:14, color:'#666666' }}>{label}</span>
+        <span style={{ fontSize:15, fontWeight:700, color:'#1C1A16' }}>{displayed}%</span>
       </div>
-      <div style={{ height:12, background:'#1e293b', borderRadius:6, overflow:'hidden' }}>
+      <div style={{ height:12, background:'#E5E0D6', borderRadius:6, overflow:'hidden' }}>
         <div style={{ height:'100%', borderRadius:6, background:color, width:`${width}%`, transition:'width 0.05s linear' }}/>
       </div>
     </div>
@@ -322,8 +322,8 @@ function StepsStrip({ steps }) {
   return (
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18 }}>
       {steps.map((s, i) => (
-        <div key={i} style={{ display:'flex', alignItems:'center', gap:8, background:'#101827', border:'1px solid #24344f', borderRadius:999, padding:'6px 14px', fontSize:13, color:'#94a3b8' }}>
-          <span style={{ background:'#2563eb', color:'#dbeafe', borderRadius:'50%', width:20, height:20, display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{i+1}</span>
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:8, background:'#F0EDE6', border:'1px solid #E5E0D6', borderRadius:999, padding:'6px 14px', fontSize:13, color:'#666666' }}>
+          <span style={{ background:'#1C1A16', color:'#F8F6F1', borderRadius:'50%', width:20, height:20, display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{i+1}</span>
           {s}
         </div>
       ))}
@@ -676,17 +676,17 @@ function OptimizationPage() {
         <div className="preview-box" style={{display:'block',padding:24}}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1', minWidth: '220px' }}>
-              <p style={{ fontWeight: 700, marginBottom: '6px', fontSize: '18px', color: '#f8fafc' }}>CV Evaluation Report</p>
-              <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
+              <p style={{ fontWeight: 700, marginBottom: '6px', fontSize: '18px', color: '#1C1A16' }}>CV Evaluation Report</p>
+              <p style={{ color: '#666666', fontSize: '13px', lineHeight: '1.5' }}>
                 This is a strict, real-time ATS analysis of your resume. Scores below 65% indicate a weak match that requires significant optimization.
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', background: '#0f172a', padding: '28px 24px', borderRadius: '16px', border: '1px solid #1e293b', alignItems: 'center', marginBottom: '24px' }}>
-            <div style={{ flex: '0 0 140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)', borderRadius: '50%', width: '140px', height: '140px', border: `4px solid ${getScoreColor(result.score)}`, boxShadow: `0 0 20px ${getScoreColor(result.score)}30`, margin: '0 auto' }}>
-              <div style={{ fontSize: '42px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>{result.score}</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>Match Score</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', background: '#F8F6F1', padding: '28px 24px', borderRadius: '16px', border: '1px solid #E5E0D6', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ flex: '0 0 140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', borderRadius: '50%', width: '140px', height: '140px', border: `4px solid ${getScoreColor(result.score)}`, boxShadow: `0 0 20px ${getScoreColor(result.score)}30`, margin: '0 auto' }}>
+              <div style={{ fontSize: '42px', fontWeight: '800', color: '#1C1A16', lineHeight: '1' }}>{result.score}</div>
+              <div style={{ fontSize: '12px', color: '#666666', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>Match Score</div>
             </div>
             <div style={{ flex: '1', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {[
@@ -698,11 +698,11 @@ function OptimizationPage() {
                 const color = getScoreColor(item.score);
                 return (
                   <div key={idx}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px', color: '#e2e8f0', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px', color: '#1C1A16', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       <span>{item.label}</span>
                       <span style={{ color: color }}>{item.score}%</span>
                     </div>
-                    <div style={{ height: '6px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ height: '6px', background: '#E5E0D6', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${item.score}%`, height: '100%', background: color, borderRadius: '4px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
                     </div>
                   </div>
@@ -715,7 +715,7 @@ function OptimizationPage() {
             <p style={{fontWeight:700,fontSize:14,marginBottom:6}}>
               Missing Keywords
               <span style={{fontWeight:400,color:'#94a3b8',fontSize:13,marginLeft:8}}>
-                We found <b style={{color:'#f1f5f9'}}>{result.missingCount}</b> missing important keywords.
+                We found <b style={{color:'#1C1A16'}}>{result.missingCount}</b> missing important keywords.
               </span>
             </p>
             {!paymentConfirmed && (
@@ -724,7 +724,7 @@ function OptimizationPage() {
                   <span key={k} style={{filter:'blur(5px)',userSelect:'none',pointerEvents:'none'}}>{k}</span>
                 ))}
                 {result.missingCount > 3 && (
-                  <span style={{background:'#1e293b',border:'1px solid #334155',borderRadius:999,padding:'6px 12px',fontSize:13,color:'#94a3b8'}}>
+                  <span style={{background:'#F0EDE6',border:'1px solid #E5E0D6',borderRadius:999,padding:'6px 12px',fontSize:13,color:'#666666'}}>
                     +{result.missingCount-3} more (unlocked after payment)
                   </span>
                 )}
@@ -753,7 +753,7 @@ function OptimizationPage() {
           </div>
           <div style={{marginBottom:16}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:4}}>Quick Improvement</p>
-            <p style={{color:'#94a3b8',fontSize:13}}>{result.quickImprovement}</p>
+            <p style={{color:'#666666',fontSize:13}}>{result.quickImprovement}</p>
           </div>
 
           {/* ── LOCKED CARD ── */}
@@ -792,13 +792,13 @@ function OptimizationPage() {
           <h3>Edit Your Optimized CV Before PDF</h3>
           <p className="muted">Professional sentences have been added automatically. Edit any field, then download your PDF.</p>
           {profSentences.length > 0 && (
-            <div style={{background:'rgba(22,163,74,0.1)',border:'1px solid rgba(22,163,74,0.3)',borderRadius:12,padding:14,marginBottom:20}}>
-              <p style={{fontWeight:700,color:'#4ade80',marginBottom:8}}>✓ Professional sentences added automatically:</p>
-              {profSentences.map((s,i)=><p key={i} style={{color:'#86efac',fontSize:13,marginBottom:4}}>• {s}</p>)}
+            <div style={{background:'#EBF5EE',border:'1px solid #c3e6cb',borderRadius:12,padding:14,marginBottom:20}}>
+              <p style={{fontWeight:700,color:'#166534',marginBottom:8}}>✓ Professional sentences added automatically:</p>
+              {profSentences.map((s,i)=><p key={i} style={{color:'#166534',fontSize:13,marginBottom:4}}>• {s}</p>)}
             </div>
           )}
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Personal Information</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Personal Information</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Full Name</label><input value={paidCV.name} onChange={e=>updatePaidCVField('name',e.target.value)} placeholder="e.g. John Smith"/></div>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Phone Number</label><input value={paidCV.phone} onChange={e=>updatePaidCVField('phone',e.target.value)} placeholder="e.g. +971 50 123 4567"/></div>
@@ -808,22 +808,22 @@ function OptimizationPage() {
             </div>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Summary</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Professional Summary</p>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Write 3–5 sentences about your background, skills, and career goal.</p>
             <textarea style={{minHeight:120}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Professional Experience</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Professional Experience</p>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements.</p>
             <textarea style={{minHeight:160}} value={paidCV.experience} onChange={e=>updatePaidCVField('experience',e.target.value)} placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients'}/>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Education</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Education</p>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Include your degree, university, graduation year, and country.</p>
             <textarea style={{minHeight:80}} value={paidCV.education} onChange={e=>updatePaidCVField('education',e.target.value)} placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}/>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Skills</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Skills</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div>
                 <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Soft Skills</label>
@@ -836,38 +836,38 @@ function OptimizationPage() {
             </div>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Internship and Courses</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Internship and Courses</p>
             <textarea style={{minHeight:100}} value={paidCV.internshipCourses} onChange={e=>updatePaidCVField('internshipCourses',e.target.value)} placeholder={'e.g.\nPharmacy Internship — Cairo Hospital (2017)'}/>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Details</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Additional Details</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Languages</label><input value={paidCV.language} onChange={e=>updatePaidCVField('language',e.target.value)} placeholder="e.g. Arabic (native), English (fluent)"/></div>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Licenses & Certifications</label><input value={paidCV.license} onChange={e=>updatePaidCVField('license',e.target.value)} placeholder="e.g. UAE Pharmacist License, DHA"/></div>
             </div>
           </div>
           <div style={{marginBottom:24}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#94a3b8',borderBottom:'1px solid #24344f',paddingBottom:8}}>Additional Information</p>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Additional Information</p>
             <textarea style={{minHeight:80}} value={paidCV.additionalInfo} onChange={e=>updatePaidCVField('additionalInfo',e.target.value)} placeholder="e.g. UAE driving license holder."/>
           </div>
           {paidCV?.scoreJustification && (
-            <div style={{marginBottom:18,padding:14,background:'rgba(217,119,6,0.1)',border:'1px solid rgba(217,119,6,0.2)',borderRadius:12}}>
-              <p style={{fontWeight:700,fontSize:14,color:'#f59e0b',marginBottom:4}}>Score Justification</p>
-              <p style={{color:'#94a3b8',fontSize:13}}>{paidCV.scoreJustification}</p>
+            <div style={{marginBottom:18,padding:14,background:'#FEF9EC',border:'1px solid #FDE68A',borderRadius:12}}>
+              <p style={{fontWeight:700,fontSize:14,color:'#92400E',marginBottom:4}}>Score Justification</p>
+              <p style={{color:'#666666',fontSize:13}}>{paidCV.scoreJustification}</p>
             </div>
           )}
 
           {suggestedAchievements.length > 0 && (
-            <div style={{marginBottom:24,padding:16,background:'rgba(37,99,235,0.08)',border:'1px solid rgba(37,99,235,0.25)',borderRadius:12}}>
-              <p style={{fontWeight:700,fontSize:15,color:'#93c5fd',marginBottom:4}}>⭐ Suggested Achievements</p>
-              <p style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>
+            <div style={{marginBottom:24,padding:16,background:'#F0EDE6',border:'1px solid #E5E0D6',borderRadius:12}}>
+              <p style={{fontWeight:700,fontSize:15,color:'#1C1A16',marginBottom:4}}>⭐ Suggested Achievements</p>
+              <p style={{fontSize:12,color:'#666666',marginBottom:14}}>
                 Select achievements that apply to you, fill in your numbers, then click Add to CV.
               </p>
               {suggestedAchievements.map((achievement, i) => {
                 const isSelected = selectedAchievements.some(a => a.index === i);
                 const selected = selectedAchievements.find(a => a.index === i);
                 return (
-                  <div key={i} style={{marginBottom:10,padding:12,background:isSelected?'rgba(37,99,235,0.12)':'rgba(255,255,255,0.02)',border:isSelected?'1px solid rgba(37,99,235,0.4)':'1px solid rgba(255,255,255,0.08)',borderRadius:8}}>
+                  <div key={i} style={{marginBottom:10,padding:12,background:isSelected?'#EBF5EE':'#FFFFFF',border:isSelected?'1px solid #2DB34A':'1px solid #E5E0D6',borderRadius:8}}>
                     <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
                       <input type="checkbox" checked={isSelected} style={{marginTop:3,cursor:'pointer',width:16,height:16,flexShrink:0}}
                         onChange={e => {
@@ -876,7 +876,7 @@ function OptimizationPage() {
                         }}
                       />
                       <div style={{flex:1}}>
-                        <p style={{fontSize:13,color:'#e2e8f0',marginBottom:isSelected?6:0}}>{achievement}</p>
+                        <p style={{fontSize:13,color:'#1C1A16',marginBottom:isSelected?6:0}}>{achievement}</p>
                         {isSelected && (
                           <textarea style={{width:'100%',minHeight:60,fontSize:12,marginTop:4}} value={selected?.customText || achievement}
                             placeholder="Edit and fill in your numbers..."
@@ -889,20 +889,20 @@ function OptimizationPage() {
                 );
               })}
               {selectedAchievements.length > 0 && (
-                <div style={{marginTop:14,padding:14,background:'rgba(15,23,42,0.6)',borderRadius:10,border:'1px solid #1e293b'}}>
-                  <label style={{fontSize:13,color:'#94a3b8',display:'block',marginBottom:8,fontWeight:700}}>
+                <div style={{marginTop:14,padding:14,background:'#F0EDE6',borderRadius:10,border:'1px solid #E5E0D6'}}>
+                  <label style={{fontSize:13,color:'#666666',display:'block',marginBottom:8,fontWeight:700}}>
                     Add achievements to this job:
                   </label>
                   <select
                     id="jobTargetSelect"
-                    style={{width:'100%',padding:'10px',borderRadius:'8px',background:'#0f172a',color:'#f8fafc',border:'1px solid #334155',marginBottom:14,fontSize:13,outline:'none'}}
+                    style={{width:'100%',padding:'10px',borderRadius:'8px',background:'#FFFFFF',color:'#1C1A16',border:'1px solid #E5E0D6',marginBottom:14,fontSize:13,outline:'none'}}
                   >
                     {(paidCV.experience || '').split(/\n\s*\n/).filter(b => b.trim()).map((block, idx) => {
                       const title = block.split('\n').find(l => l.trim())?.substring(0, 60) || `Job ${idx + 1}`;
                       return <option key={idx} value={idx}>{title} {idx === 0 ? '(Latest)' : ''}</option>;
                     })}
                   </select>
-                  <button style={{width:'100%',background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'12px 20px',fontWeight:700,cursor:'pointer',fontSize:14,transition:'0.2s'}}
+                  <button style={{width:'100%',background:'#1C1A16',color:'#F8F6F1',border:'none',borderRadius:8,padding:'12px 20px',fontWeight:700,cursor:'pointer',fontSize:14,transition:'0.2s'}}
                     onClick={() => {
                       const added = selectedAchievements.map(a => '• ' + (a.customText || a.text)).join('\n');
                       const blocks = (paidCV.experience || '').split(/\n\s*\n/).filter(b => b.trim());
@@ -1144,11 +1144,11 @@ function BuilderWizard() {
           <h3>Review & Customize Your Optimized CV</h3>
           
           {suggestedSoftSkills && suggestedSoftSkills.length > 0 && (
-            <div style={{marginBottom: 16, padding: 16, background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b'}}>
-              <p style={{fontWeight: 700, color: '#f8fafc', marginBottom: 12}}>⭐ Suggested Soft Skills (Based on Job Description)</p>
+            <div style={{marginBottom: 16, padding: 16, background: '#F8F6F1', borderRadius: 12, border: '1px solid #E5E0D6'}}>
+              <p style={{fontWeight: 700, color: '#1C1A16', marginBottom: 12}}>⭐ Suggested Soft Skills (Based on Job Description)</p>
               <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
                 {suggestedSoftSkills.map((skill, i) => (
-                  <label key={i} style={{background: selectedSoftSkills.includes(skill) ? '#2563eb' : '#1e293b', color: '#fff', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
+                  <label key={i} style={{background: selectedSoftSkills.includes(skill) ? '#1C1A16' : '#F0EDE6', color: selectedSoftSkills.includes(skill) ? '#F8F6F1' : '#1C1A16', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
                     <input type="checkbox" style={{display: 'none'}} checked={selectedSoftSkills.includes(skill)}
                       onChange={(e) => {
                         if (e.target.checked) setSelectedSoftSkills([...selectedSoftSkills, skill]);
@@ -1163,11 +1163,11 @@ function BuilderWizard() {
           )}
 
           {suggestedTechnicalSkills && suggestedTechnicalSkills.length > 0 && (
-            <div style={{marginBottom: 16, padding: 16, background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b'}}>
-              <p style={{fontWeight: 700, color: '#f8fafc', marginBottom: 12}}>⚙️ Suggested Technical Skills</p>
+            <div style={{marginBottom: 16, padding: 16, background: '#F8F6F1', borderRadius: 12, border: '1px solid #E5E0D6'}}>
+              <p style={{fontWeight: 700, color: '#1C1A16', marginBottom: 12}}>⚙️ Suggested Technical Skills</p>
               <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
                 {suggestedTechnicalSkills.map((skill, i) => (
-                  <label key={i} style={{background: selectedTechnicalSkills.includes(skill) ? '#10b981' : '#1e293b', color: '#fff', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
+                  <label key={i} style={{background: selectedTechnicalSkills.includes(skill) ? '#2DB34A' : '#F0EDE6', color: selectedTechnicalSkills.includes(skill) ? '#fff' : '#1C1A16', padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, userSelect: 'none', transition: '0.2s'}}>
                     <input type="checkbox" style={{display: 'none'}} checked={selectedTechnicalSkills.includes(skill)}
                       onChange={(e) => {
                         if (e.target.checked) setSelectedTechnicalSkills([...selectedTechnicalSkills, skill]);
@@ -1182,7 +1182,7 @@ function BuilderWizard() {
           )}
 
           {(selectedSoftSkills.length > 0 || selectedTechnicalSkills.length > 0) && (
-            <button style={{marginBottom: 24, background:'linear-gradient(135deg,#2563eb,#4f46e5)',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer'}} 
+            <button style={{marginBottom: 24, background:'#1C1A16',color:'#F8F6F1',border:'none',borderRadius:8,padding:'10px 20px',fontWeight:700,cursor:'pointer'}}
               onClick={() => {
                 let currentSoft = builtCV.softSkills ? builtCV.softSkills.split(',').map(s=>s.trim()) : [];
                 let currentTech = builtCV.technicalSkills ? builtCV.technicalSkills.split(',').map(s=>s.trim()) : [];
@@ -1349,11 +1349,11 @@ function LinkedInPage() {
         />
 
         <div style={{
-          border: `2px dashed ${cvText ? '#10b981' : '#1e293b'}`,
+          border: `2px dashed ${cvText ? '#2DB34A' : '#E5E0D6'}`,
           borderRadius: '8px',
           padding: '24px',
           textAlign: 'center',
-          background: '#0f172a',
+          background: '#F8F6F1',
           cursor: 'pointer',
           position: 'relative',
           transition: 'border-color 0.2s',
@@ -1367,10 +1367,10 @@ function LinkedInPage() {
           <span style={{fontSize:'24px', display:'block', marginBottom:'8px'}}>
             {fileLoading ? '⏳' : cvText ? '✅' : '📁'}
           </span>
-          <p style={{color:'#f8fafc', margin:'0 0 4px 0', fontSize:'14px', fontWeight:'bold'}}>
+          <p style={{color:'#1C1A16', margin:'0 0 4px 0', fontSize:'14px', fontWeight:'bold'}}>
             {fileLoading ? 'Reading file...' : cvText ? 'CV Uploaded Successfully!' : 'Click or Drag to Upload Your CV'}
           </p>
-          <p style={{color:'#94a3b8', margin:0, fontSize:'12px'}}>
+          <p style={{color:'#666666', margin:0, fontSize:'12px'}}>
             {cvFile ? `Selected: ${cvFile.name}` : 'Supports PDF, DOCX, TXT (Max 5MB)'}
           </p>
         </div>
@@ -1417,32 +1417,32 @@ function LinkedInPage() {
         <h3>Full LinkedIn Optimization</h3>
 
         <div style={{marginBottom:'20px'}}>
-          <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>Professional Headline</h4>
-          <p style={{fontSize:'15px', color:'#f8fafc', background:'#0f172a', padding:'12px', borderRadius:'8px', border:'1px solid #1e293b'}}>{fullLinkedInOutput.headline}</p>
+          <h4 style={{color:'#1C1A16', borderBottom:'1px solid #E5E0D6', paddingBottom:'8px', marginBottom:'12px'}}>Professional Headline</h4>
+          <p style={{fontSize:'15px', color:'#1C1A16', background:'#F8F6F1', padding:'12px', borderRadius:'8px', border:'1px solid #E5E0D6'}}>{fullLinkedInOutput.headline}</p>
         </div>
 
         <div style={{marginBottom:'20px'}}>
-          <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>About Section</h4>
-          <p style={{fontSize:'14px', color:'#f8fafc', background:'#0f172a', padding:'16px', borderRadius:'8px', border:'1px solid #1e293b', whiteSpace:'pre-wrap', lineHeight:'1.6'}}>{fullLinkedInOutput.about}</p>
+          <h4 style={{color:'#1C1A16', borderBottom:'1px solid #E5E0D6', paddingBottom:'8px', marginBottom:'12px'}}>About Section</h4>
+          <p style={{fontSize:'14px', color:'#1C1A16', background:'#F8F6F1', padding:'16px', borderRadius:'8px', border:'1px solid #E5E0D6', whiteSpace:'pre-wrap', lineHeight:'1.6'}}>{fullLinkedInOutput.about}</p>
         </div>
 
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'24px'}}>
           <div>
-            <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>Skills Keywords</h4>
-            <p style={{fontSize:'13px', color:'#cbd5e1', background:'#0f172a', padding:'12px', borderRadius:'8px', border:'1px solid #1e293b'}}>{fullLinkedInOutput.skills}</p>
+            <h4 style={{color:'#1C1A16', borderBottom:'1px solid #E5E0D6', paddingBottom:'8px', marginBottom:'12px'}}>Skills Keywords</h4>
+            <p style={{fontSize:'13px', color:'#555555', background:'#F8F6F1', padding:'12px', borderRadius:'8px', border:'1px solid #E5E0D6'}}>{fullLinkedInOutput.skills}</p>
           </div>
           <div>
-            <h4 style={{color:'#94a3b8', borderBottom:'1px solid #24344f', paddingBottom:'8px', marginBottom:'12px'}}>Recruiter Search Keywords</h4>
-            <p style={{fontSize:'13px', color:'#cbd5e1', background:'#0f172a', padding:'12px', borderRadius:'8px', border:'1px solid #1e293b'}}>{fullLinkedInOutput.recruiterKeywords}</p>
+            <h4 style={{color:'#1C1A16', borderBottom:'1px solid #E5E0D6', paddingBottom:'8px', marginBottom:'12px'}}>Recruiter Search Keywords</h4>
+            <p style={{fontSize:'13px', color:'#555555', background:'#F8F6F1', padding:'12px', borderRadius:'8px', border:'1px solid #E5E0D6'}}>{fullLinkedInOutput.recruiterKeywords}</p>
           </div>
         </div>
 
-        <div style={{marginTop:'32px', background:'linear-gradient(145deg, #101827 0%, #0f172a 100%)', padding:'24px', borderRadius:'16px', border:'1px solid #1e293b', textAlign:'left'}}>
-          <h3 style={{color:'#f8fafc', marginBottom:'20px', fontSize:'18px', display:'flex', alignItems:'center', gap:'8px'}}>🚀 Bonus: Expert LinkedIn Tips & AI Tools</h3>
+        <div style={{marginTop:'32px', background:'#F0EDE6', padding:'24px', borderRadius:'16px', border:'1px solid #E5E0D6', textAlign:'left'}}>
+          <h3 style={{color:'#1C1A16', marginBottom:'20px', fontSize:'18px', display:'flex', alignItems:'center', gap:'8px'}}>🚀 Bonus: Expert LinkedIn Tips & AI Tools</h3>
 
           <div style={{marginBottom:'20px'}}>
-            <h4 style={{color:'#3b82f6', marginBottom:'8px', fontSize:'15px'}}>1. How to Verify Your Account (Get the Badge)</h4>
-            <ul style={{fontSize:'13px', color:'#cbd5e1', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
+            <h4 style={{color:'#1C1A16', marginBottom:'8px', fontSize:'15px'}}>1. How to Verify Your Account (Get the Badge)</h4>
+            <ul style={{fontSize:'13px', color:'#555555', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
               <li>Go to <b>Settings & Privacy</b> &gt; <b>Account Preferences</b> &gt; <b>Verifications</b>.</li>
               <li>Depending on your country, choose your verification method (Clear, Persona with Passport/NFC, or Work Email).</li>
               <li>Follow the prompts to get the trusted verification checkmark next to your name.</li>
@@ -1450,8 +1450,8 @@ function LinkedInPage() {
           </div>
 
           <div style={{marginBottom:'20px'}}>
-            <h4 style={{color:'#10b981', marginBottom:'8px', fontSize:'15px'}}>2. Profile Visibility & Formatting Tricks</h4>
-            <ul style={{fontSize:'13px', color:'#cbd5e1', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
+            <h4 style={{color:'#1C1A16', marginBottom:'8px', fontSize:'15px'}}>2. Profile Visibility & Formatting Tricks</h4>
+            <ul style={{fontSize:'13px', color:'#555555', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
               <li><b>Custom URL:</b> Edit your public profile URL to be just your name (e.g., <i>linkedin.com/in/yourname</i>) without random numbers.</li>
               <li><b>Featured Section:</b> Pin your optimized CV, portfolio, or top posts directly below your About section.</li>
               <li><b>Open to Work:</b> Turn this on for "Recruiters Only" so you appear in more searches without showing the green badge publicly on your picture.</li>
@@ -1459,8 +1459,8 @@ function LinkedInPage() {
           </div>
 
           <div style={{marginBottom:'10px'}}>
-            <h4 style={{color:'#8b5cf6', marginBottom:'8px', fontSize:'15px'}}>3. AI Tools for a Professional Profile Picture & Cover</h4>
-            <ul style={{fontSize:'13px', color:'#cbd5e1', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
+            <h4 style={{color:'#1C1A16', marginBottom:'8px', fontSize:'15px'}}>3. AI Tools for a Professional Profile Picture & Cover</h4>
+            <ul style={{fontSize:'13px', color:'#555555', paddingLeft:'20px', lineHeight:'1.6', margin:0}}>
               <li><b>Profile Picture (Free):</b> Use <a href="https://pfpmaker.com/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>PFPMaker.com</a> to instantly remove your background and add a clean, studio-like color.</li>
               <li><b>Profile Picture (Premium):</b> Tools like <a href="https://www.aragon.ai/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>Aragon AI</a> turn normal selfies into high-quality corporate headshots.</li>
               <li><b>Unique Cover Photo:</b> Go to <a href="https://www.canva.com/" target="_blank" rel="noreferrer" style={{color:'#60a5fa', textDecoration:'none'}}>Canva.com</a> and search for "LinkedIn Banner". Pick a template that matches your industry and target role.</li>

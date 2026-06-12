@@ -35,7 +35,7 @@ export default function ContactSection() {
   return (
     <section style={{
       padding: '60px 24px',
-      borderTop: '1px solid #1e293b',
+      borderTop: '1px solid #E5E0D6',
       background: 'transparent',
     }}>
       <div className="contact-grid" style={{
@@ -49,36 +49,36 @@ export default function ContactSection() {
 
         {/* Contact Info Card */}
         <div style={{
-          background: 'linear-gradient(145deg, #1e3a5f, #0f172a)',
+          background: '#F0EDE6',
           borderRadius: 16,
           padding: '32px 24px',
-          color: '#fff',
+          color: '#1C1A16',
           display: 'flex',
           flexDirection: 'column',
           gap: 20,
-          border: '1px solid #1e293b',
+          border: '1px solid #E5E0D6',
         }}>
           <div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 10px', color: '#f1f5f9' }}>Contact Us</h2>
-            <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 10px', color: '#1C1A16' }}>Contact Us</h2>
+            <p style={{ fontSize: 13, color: '#666666', lineHeight: 1.6, margin: 0 }}>
               Have a question or feedback about ResuVanta? Send us a message and we will get back to you as soon as possible.
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>📧</span>
-              <span style={{ fontSize: 13, color: '#cbd5e1' }}>support@resuvanta.com</span>
+              <span style={{ fontSize: 13, color: '#555555' }}>support@resuvanta.com</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>🌐</span>
-              <span style={{ fontSize: 13, color: '#cbd5e1' }}>www.resuvanta.com</span>
+              <span style={{ fontSize: 13, color: '#555555' }}>www.resuvanta.com</span>
             </div>
           </div>
           <div style={{
-            borderTop: '1px solid #1e293b',
+            borderTop: '1px solid #E5E0D6',
             paddingTop: 16,
             fontSize: 11,
-            color: '#475569',
+            color: '#999999',
           }}>
             © {new Date().getFullYear()} ResuVanta. All rights reserved.
           </div>
@@ -86,10 +86,10 @@ export default function ContactSection() {
 
         {/* Contact Form */}
         <div style={{
-          background: '#0f172a',
+          background: '#FFFFFF',
           borderRadius: 16,
           padding: '28px 24px',
-          border: '1px solid #1e293b',
+          border: '1px solid #E5E0D6',
         }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -99,7 +99,7 @@ export default function ContactSection() {
               { label: 'Subject', key: 'subject', type: 'text', placeholder: 'Message subject' },
             ].map(({ label, key, type, placeholder }) => (
               <div key={key}>
-                <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#666666', marginBottom: 6, fontWeight: 600 }}>
                   {label}
                 </label>
                 <input
@@ -111,10 +111,10 @@ export default function ContactSection() {
                   style={{
                     width: '100%',
                     padding: '9px 14px',
-                    background: '#1e293b',
-                    border: '1px solid #334155',
+                    background: '#F8F6F1',
+                    border: '1px solid #E5E0D6',
                     borderRadius: 8,
-                    color: '#f1f5f9',
+                    color: '#1C1A16',
                     fontSize: 13,
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -124,7 +124,7 @@ export default function ContactSection() {
             ))}
 
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#666666', marginBottom: 6, fontWeight: 600 }}>
                 Message
               </label>
               <textarea
@@ -136,10 +136,10 @@ export default function ContactSection() {
                 style={{
                   width: '100%',
                   padding: '9px 14px',
-                  background: '#1e293b',
-                  border: '1px solid #334155',
+                  background: '#F8F6F1',
+                  border: '1px solid #E5E0D6',
                   borderRadius: 8,
-                  color: '#f1f5f9',
+                  color: '#1C1A16',
                   fontSize: 13,
                   outline: 'none',
                   resize: 'none',
@@ -149,12 +149,12 @@ export default function ContactSection() {
             </div>
 
             {status === 'success' && (
-              <p style={{ color: '#4ade80', fontSize: 13, margin: 0 }}>
+              <p style={{ color: '#166534', fontSize: 13, margin: 0 }}>
                 ✓ Message sent successfully!
               </p>
             )}
             {status === 'error' && (
-              <p style={{ color: '#f87171', fontSize: 13, margin: 0 }}>
+              <p style={{ color: '#991b1b', fontSize: 13, margin: 0 }}>
                 ✗ Failed to send. Please try again.
               </p>
             )}
@@ -165,8 +165,8 @@ export default function ContactSection() {
               style={{
                 width: '100%',
                 padding: '11px 20px',
-                background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                color: '#fff',
+                background: '#1C1A16',
+                color: '#F8F6F1',
                 border: 'none',
                 borderRadius: 8,
                 fontSize: 13,
@@ -176,7 +176,7 @@ export default function ContactSection() {
                 opacity: status === 'loading' ? 0.7 : 1,
               }}
             >
-              {status === 'loading' ? '⏳ Sending...' : 'Send Message 🚀'}
+              {status === 'loading' ? '⏳ Sending...' : 'Send Message'}
             </button>
 
           </form>
