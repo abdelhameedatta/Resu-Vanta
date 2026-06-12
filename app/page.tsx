@@ -362,14 +362,21 @@ function CVSection({ title, content }) {
 }
 
 // ─── Brand Logo ───────────────────────────────────────────────────────────────
-function BrandLogo({ darkMode, footer=false }) {
-  const logoSrc = footer ? '/logo-dark.svg' : darkMode ? '/logo-dark.svg' : '/logo-light.svg';
+function BrandLogo({ darkMode, footer = false }) {
   return (
     <div className={footer ? 'logoBlock footerLogoBlock' : 'logoBlock'}>
-      <div className="logoImageFrame">
-        <img src={logoSrc} alt="Resuvanta logo" className="logoImage" />
-      </div>
-      <div className="logoSlogan">Apply with confidence.</div>
+      <svg width="200" height="52" viewBox="0 0 200 52" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="3" width="30" height="38" rx="5" fill="#2DB34A" opacity="0.12"/>
+        <rect x="2" y="3" width="30" height="38" rx="5" fill="none" stroke="#2DB34A" strokeWidth="1.5"/>
+        <line x1="9" y1="15" x2="25" y2="15" stroke="#2DB34A" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="9" y1="21" x2="25" y2="21" stroke="#2DB34A" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="9" y1="27" x2="18" y2="27" stroke="#2DB34A" strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="28" cy="36" r="8" fill="#2DB34A"/>
+        <polyline points="23.5,36 27,39.5 33,31" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <text x="44" y="24" fontFamily="-apple-system,sans-serif" fontSize="19" fontWeight="700" letterSpacing="-0.04em" fill="#1C1A16">Resu</text>
+        <text x="85" y="24" fontFamily="-apple-system,sans-serif" fontSize="19" fontWeight="700" letterSpacing="-0.04em" fill="#2DB34A">Vanta</text>
+        <text x="44" y="40" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="400" fill="#bbb" letterSpacing="0.03em">Apply with confidence.</text>
+      </svg>
     </div>
   );
 }

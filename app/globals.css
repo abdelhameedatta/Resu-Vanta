@@ -496,3 +496,170 @@ footer p { color: #ccc; max-width: 720px; line-height: 1.6; margin: 0; }
   .cv-template-preview h1, .cv-template-preview h2, .cv-template-preview p, .cv-template-preview div { color: #111827 !important; }
   .cv-section h2 { border-bottom-color: #111827 !important; }
 }
+
+/* ═══════════════════════════════════════
+   PAGE ANIMATIONS
+   ═══════════════════════════════════════ */
+
+@keyframes rv-fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rv-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rv-slideRight {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes rv-scaleUp {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rv-scanLine {
+  0%   { transform: translateY(0); opacity: 0.7; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.section .grid,
+.section .button-row,
+.section .preview-box {
+  animation: rv-fadeUp 0.5s ease forwards;
+  animation-fill-mode: both;
+}
+
+.section .grid { animation-delay: 0.1s; }
+.section .button-row { animation-delay: 0.2s; }
+.section .preview-box { animation-delay: 0.3s; }
+
+.preview-box {
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-box::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #2DB34A, transparent);
+  animation: rv-scanLine 1.2s ease forwards;
+  animation-delay: 0.4s;
+  pointer-events: none;
+}
+
+.builder-wizard .progress-box {
+  animation: rv-fadeUp 0.4s ease forwards;
+}
+
+.builder-wizard .wizard-card {
+  animation: rv-scaleUp 0.45s ease forwards;
+}
+
+.builder-wizard .wizard-actions {
+  animation: rv-fadeUp 0.4s ease forwards;
+  animation-delay: 0.2s;
+}
+
+.builder-wizard .experience-card {
+  animation: rv-fadeUp 0.35s ease forwards;
+  animation-fill-mode: both;
+}
+
+.builder-wizard .experience-card:nth-child(1) { animation-delay: 0s; }
+.builder-wizard .experience-card:nth-child(2) { animation-delay: 0.1s; }
+.builder-wizard .experience-card:nth-child(3) { animation-delay: 0.2s; }
+
+.section .form {
+  animation: rv-slideRight 0.45s ease forwards;
+  animation-fill-mode: both;
+}
+
+.section .form > * {
+  animation: rv-slideRight 0.4s ease forwards;
+  animation-fill-mode: both;
+}
+
+.section .form > *:nth-child(1) { animation-delay: 0.05s; }
+.section .form > *:nth-child(2) { animation-delay: 0.15s; }
+.section .form > *:nth-child(3) { animation-delay: 0.25s; }
+
+.pricing-grid .price-card,
+.service-grid .service-card {
+  animation: rv-scaleUp 0.4s ease forwards;
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+.pricing-grid .price-card:nth-child(1),
+.service-grid .service-card:nth-child(1) { animation-delay: 0.05s; }
+
+.pricing-grid .price-card:nth-child(2),
+.service-grid .service-card:nth-child(2) { animation-delay: 0.18s; }
+
+.pricing-grid .price-card:nth-child(3),
+.service-grid .service-card:nth-child(3) { animation-delay: 0.31s; }
+
+details {
+  animation: rv-fadeUp 0.35s ease forwards;
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+details:nth-child(1) { animation-delay: 0.05s; }
+details:nth-child(2) { animation-delay: 0.15s; }
+details:nth-child(3) { animation-delay: 0.25s; }
+details:nth-child(4) { animation-delay: 0.35s; }
+details:nth-child(5) { animation-delay: 0.45s; }
+
+details[open] summary ~ * {
+  animation: rv-fadeUp 0.3s ease forwards;
+}
+
+.logoBlock {
+  animation: rv-fadeIn 0.6s ease forwards;
+}
+
+.section > h2 {
+  animation: rv-fadeUp 0.4s ease forwards;
+}
+
+.section > p.muted {
+  animation: rv-fadeUp 0.4s ease forwards;
+  animation-delay: 0.1s;
+}
+
+.steps-strip-item,
+[class*="steps"] > div {
+  animation: rv-fadeUp 0.35s ease forwards;
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+[class*="steps"] > div:nth-child(1) { animation-delay: 0.1s; }
+[class*="steps"] > div:nth-child(2) { animation-delay: 0.2s; }
+[class*="steps"] > div:nth-child(3) { animation-delay: 0.3s; }
+[class*="steps"] > div:nth-child(4) { animation-delay: 0.4s; }
+
+.how-it-works .steps-grid > div {
+  animation: rv-scaleUp 0.4s ease forwards;
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+.how-it-works .steps-grid > div:nth-child(1) { animation-delay: 0.05s; }
+.how-it-works .steps-grid > div:nth-child(2) { animation-delay: 0.15s; }
+.how-it-works .steps-grid > div:nth-child(3) { animation-delay: 0.25s; }
+.how-it-works .steps-grid > div:nth-child(4) { animation-delay: 0.35s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0.01ms !important;
+  }
+}
