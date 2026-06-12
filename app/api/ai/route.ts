@@ -20,6 +20,10 @@ INSTRUCTIONS:
 1. REWRITE and OPTIMIZE the user's experience and summary to strongly align with the Target Job and heavily integrate keywords from the Job Description. Use professional action verbs.
 2. Generate an array of 5-8 highly relevant "suggestedSoftSkills" based on the Job Description.
 3. Generate an array of 5-8 highly relevant "suggestedTechnicalSkills" based on the Job Description.
+4. LICENSE: Extract ONLY from the provided user data. Do NOT invent or add any license not explicitly mentioned in the input.
+5. INTERNSHIPS: Format each internship/training as: TITLE | COMPANY | LOCATION | DATE (on one line), then bullet points for details below it. Separate entries with a blank line.
+6. COURSES: Format each course as: COURSE NAME | DATE (on one line), then bullet points for details below it. Separate entries with a blank line.
+7. ADDITIONAL INFORMATION: Write a concise 2-3 sentence paragraph based ONLY on the candidate's summary, experience, and education. Do not copy from the license or language fields.
 
 Return strictly this JSON format:
 {
@@ -29,7 +33,8 @@ Return strictly this JSON format:
   "education": "string",
   "softSkills": "string",
   "technicalSkills": "string",
-  "internshipCourses": "string",
+  "internships": "string",
+  "courses": "string",
   "additionalInfo": "string",
   "language": "string",
   "license": "string",

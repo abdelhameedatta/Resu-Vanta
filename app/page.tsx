@@ -33,6 +33,8 @@ function parseAICV(rawText) {
       technicalSkills: rawText.technicalSkills || rawText['TECHNICAL SKILLS'] || '',
       softSkills: rawText.softSkills || rawText['SOFT SKILLS'] || '',
       internshipCourses: rawText.internshipCourses || rawText['INTERNSHIP AND COURSES'] || '',
+      internships: rawText.internships || rawText.INTERNSHIPS || '',
+      courses: rawText.courses || rawText.COURSES || '',
       language: rawText.language || rawText.LANGUAGES || '',
       license: rawText.license || rawText.LICENSES || '',
       additionalInfo: rawText.additionalInfo || rawText['ADDITIONAL INFORMATION'] || '',
@@ -280,7 +282,27 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
     if (cv.technicalSkills) content.push({ text: [{ text: 'Technical Skills: ', bold: true }, clean(cv.technicalSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
   }
 
-  ([['INTERNSHIP AND COURSES', cv.internshipCourses], ['ADDITIONAL INFORMATION', cv.additionalInfo], ['LANGUAGE', cv.language], ['LICENSE', cv.license]] as [string, any][])
+  const renderTrainingBlocks = (text: string) => {
+    clean(text).split(/\n\s*\n/).forEach((block: string) => {
+      const lines = block.split('\n').filter((l: string) => l.trim());
+      if (!lines.length) return;
+      const title = lines[0].trim().replace(/^[-*•]\s*/, '');
+      if (title) content.push({ text: title, fontSize: 10, bold: true, color: '#000', margin: [0, 3, 0, 1] });
+      lines.slice(1).forEach((d: string) => {
+        const dt = d.trim().replace(/^[-*•\-]\s*/, '');
+        if (dt) content.push({ text: `• ${dt}`, fontSize: 10, color: '#222', margin: [10, 0, 0, 1] });
+      });
+    });
+  };
+
+  if (cv.internships) { content.push(sec('INTERNSHIPS')); renderTrainingBlocks(cv.internships); }
+  if (cv.courses) { content.push(sec('COURSES')); renderTrainingBlocks(cv.courses); }
+  if (!cv.internships && !cv.courses && cv.internshipCourses) {
+    content.push(sec('INTERNSHIP AND COURSES'));
+    content.push({ text: clean(cv.internshipCourses), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] });
+  }
+
+  ([['ADDITIONAL INFORMATION', cv.additionalInfo], ['LANGUAGE', cv.language], ['LICENSE', cv.license]] as [string, any][])
     .forEach(([label, val]) => { if (val) { content.push(sec(label)); content.push({ text: clean(val), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); } });
 
   pdfMake.createPdf({ pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], defaultStyle: { font: 'Roboto' }, content }).download(`${title.replace(/\s+/g, '_')}.pdf`);
@@ -556,7 +578,10 @@ function OptimizationPage() {
   const [selectedAchievements, setSelectedAchievements] = useState([]);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
-  
+  const [showPdfWarning, setShowPdfWarning] = useState(false);
+  const [pdfWarningAcknowledged, setPdfWarningAcknowledged] = useState(false);
+  const [pendingPdfDownload, setPendingPdfDownload] = useState<(() => Promise<void>) | null>(null);
+
   useEffect(() => {
     const paymentService = sessionStorage.getItem('resuvanta_payment_success');
     const saved = sessionStorage.getItem('resuvanta_pending_optimization');
@@ -931,12 +956,33 @@ function OptimizationPage() {
 
           <h3>Live Preview</h3>
           <CVTemplatePreview cv={paidCV} />
+
+          {showPdfWarning && (
+            <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',maxWidth:420,width:'90%',border:'1px solid #E5E0D6',boxShadow:'0 8px 32px rgba(0,0,0,0.12)'}}>
+                <h3 style={{margin:'0 0 12px',color:'#1C1A16',fontSize:16,fontWeight:700}}>Before downloading your CV</h3>
+                <p style={{color:'#666',fontSize:13,lineHeight:1.6,margin:'0 0 20px'}}>We recommend reviewing all sections carefully before downloading. Errors in personal details, dates, or content are your responsibility to correct.</p>
+                <div style={{display:'flex',gap:10}}>
+                  <button style={{flex:1}} onClick={()=>{setShowPdfWarning(false);setPdfWarningAcknowledged(true);}}>OK</button>
+                  <button onClick={async()=>{
+                    setShowPdfWarning(false); setPdfWarningAcknowledged(true);
+                    if (pendingPdfDownload) await pendingPdfDownload();
+                  }}>Download Anyway</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <button onClick={async ()=>{
-            await openPDFWindow(paidCV,'Optimized CV');
-            clearServiceSession('optimization');
-            setPaymentConfirmed(false); setRemainingOutputs(3);
-            setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
-            setMessage('PDF downloaded. Temporary session data has been cleared.');
+            const doDownload = async () => {
+              await openPDFWindow(paidCV,'Optimized CV');
+              clearServiceSession('optimization');
+              setPaymentConfirmed(false); setRemainingOutputs(3);
+              setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
+              setMessage('PDF downloaded. Temporary session data has been cleared.');
+            };
+            if (!pdfWarningAcknowledged) { setPendingPdfDownload(()=>doDownload); setShowPdfWarning(true); return; }
+            await doDownload();
           }}>Download PDF</button>
         </div>
       )}
@@ -951,6 +997,9 @@ function BuilderWizard() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showPdfWarning, setShowPdfWarning] = useState(false);
+  const [pdfWarningAcknowledged, setPdfWarningAcknowledged] = useState(false);
+  const [pendingPdfDownload, setPendingPdfDownload] = useState<(() => Promise<void>) | null>(null);
   const [builder, setBuilder] = useState({
     targetJob:'',jobDescription:'',name:'',address:'',phone:'',email:'',linkedin:'',
     degree:'',university:'',graduationYear:'',educationCountry:'',
@@ -1059,8 +1108,9 @@ function BuilderWizard() {
         education: p.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
         softSkills: p.softSkills || builder.softSkills,
         technicalSkills: p.technicalSkills || builder.technicalSkills,
-        internshipCourses: p.internshipCourses || `${builder.internships} ${builder.courses}`,
-        additionalInfo: p.additionalInfo || builder.additionalInfo || '',
+        internships: p.internships || builder.internships || '',
+        courses: p.courses || builder.courses || '',
+        additionalInfo: p.additionalInfo || '',
         language: p.language || builder.languages || 'Not provided',
         license: p.license || builder.licenses || 'Not provided',
       };
@@ -1221,10 +1271,31 @@ function BuilderWizard() {
           )}
 
           <CVTemplatePreview cv={builtCV}/>
+
+          {showPdfWarning && (
+            <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',maxWidth:420,width:'90%',border:'1px solid #E5E0D6',boxShadow:'0 8px 32px rgba(0,0,0,0.12)'}}>
+                <h3 style={{margin:'0 0 12px',color:'#1C1A16',fontSize:16,fontWeight:700}}>Before downloading your CV</h3>
+                <p style={{color:'#666',fontSize:13,lineHeight:1.6,margin:'0 0 20px'}}>We recommend reviewing all sections carefully before downloading. Errors in personal details, dates, or content are your responsibility to correct.</p>
+                <div style={{display:'flex',gap:10}}>
+                  <button style={{flex:1}} onClick={()=>{setShowPdfWarning(false);setPdfWarningAcknowledged(true);}}>OK</button>
+                  <button onClick={async()=>{
+                    setShowPdfWarning(false); setPdfWarningAcknowledged(true);
+                    if (pendingPdfDownload) await pendingPdfDownload();
+                  }}>Download Anyway</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <button onClick={async ()=>{
-            await openPDFWindow(builtCV,'Built CV');
-            clearServiceSession('builder');
-            setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
+            const doDownload = async () => {
+              await openPDFWindow(builtCV,'Built CV');
+              clearServiceSession('builder');
+              setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
+            };
+            if (!pdfWarningAcknowledged) { setPendingPdfDownload(()=>doDownload); setShowPdfWarning(true); return; }
+            await doDownload();
           }}>Download PDF</button>
         </div>
       )}
