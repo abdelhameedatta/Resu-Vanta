@@ -7,6 +7,11 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'ResuVanta — ATS CV Optimization & Resume Builder',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
   description: 'Optimize your CV, match job descriptions, build ATS-friendly resumes, and improve your LinkedIn profile. Get hired faster with ResuVanta.',
   keywords: 'CV optimization, resume builder, ATS resume, LinkedIn optimization, job application, CV builder, resume optimization, ATS friendly CV',
   authors: [{ name: 'ResuVanta' }],

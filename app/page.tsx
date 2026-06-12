@@ -267,7 +267,7 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
         bullets.push(t.replace(/^[-*•]\s*/, ''));
       });
       if (jobTitle) content.push({ text: jobTitle.toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
-      if (company || date) content.push({ columns: [{ text: company, fontSize: 10, bold: true }, { text: date, fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+      if (company || date) content.push({ columns: [{ text: company, fontSize: 10 }, { text: date, fontSize: 10, alignment: 'right' }], margin: [0, 1, 0, 3] });
       bullets.forEach((b: string) => content.push({ text: `• ${b}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] }));
     });
   }
