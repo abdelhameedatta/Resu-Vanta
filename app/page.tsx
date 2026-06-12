@@ -1019,7 +1019,22 @@ function BuilderWizard() {
         service: 'builder',
         targetJob: builder.targetJob,
         jobDescription: builder.jobDescription,
-        builderData: `Name: ${builder.name}\nAddress: ${builder.address}\nDegree: ${builder.degree}\nExperience:\n${formatExperience()}`
+        builderData: [
+          `Name: ${builder.name}`,
+          `Address: ${builder.address}`,
+          `Phone: ${builder.phone}`,
+          `Email: ${builder.email}`,
+          `LinkedIn: ${builder.linkedin}`,
+          `Degree: ${builder.degree} | University: ${builder.university} | Year: ${builder.graduationYear} | Country: ${builder.educationCountry}`,
+          `Soft Skills: ${builder.softSkills}`,
+          `Technical Skills: ${builder.technicalSkills}`,
+          `Internships: ${builder.internships}`,
+          `Courses / Training: ${builder.courses}`,
+          `Languages: ${builder.languages}`,
+          `Licenses: ${builder.licenses}`,
+          `Additional Information: ${builder.additionalInfo}`,
+          `Experience:\n${formatExperience()}`,
+        ].join('\n')
       };
       const response = await fetch('/api/ai', {
         method: 'POST',
@@ -1114,7 +1129,7 @@ function BuilderWizard() {
       {step===7&&<div className="wizard-card"><h3>Languages, Licenses and Additional Info</h3>
         <textarea placeholder="Languages" value={builder.languages} onChange={e=>updateBuilder('languages',e.target.value)}/>
         <textarea placeholder="Licenses" value={builder.licenses} onChange={e=>updateBuilder('licenses',e.target.value)}/>
-        <textarea placeholder="Additional Information" value={builder.additionalInfo} onChange={e=>updateBuilder('additionalInfo',e.target.value)}/>
+        <textarea placeholder="Additional Information — e.g. UAE driving license, volunteer work, publications, hobbies. Leave blank and our AI will write a concise summary for you." value={builder.additionalInfo} onChange={e=>updateBuilder('additionalInfo',e.target.value)}/>
       </div>}
 
       <div className="wizard-actions">
