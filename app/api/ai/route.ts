@@ -18,12 +18,26 @@ I will provide you with user data, their 'Target Job', and a 'Job Description'.
 
 INSTRUCTIONS:
 1. REWRITE and OPTIMIZE the user's experience and summary to strongly align with the Target Job and heavily integrate keywords from the Job Description. Use professional action verbs.
+   SUMMARY: Write a professional summary of 4 to 5 lines maximum. Be concise and impactful.
+   EXPERIENCE ORDER: Output experience entries in the EXACT SAME ORDER as provided in the input. Do NOT reorder jobs.
+   EXPERIENCE FORMAT — follow this EXACT structure for every job (no deviations):
+   JOB TITLE
+   COMPANY NAME | CITY, COUNTRY | Start Date – End Date
+   • Responsibility or achievement
+   • Responsibility or achievement
+   [blank line between jobs]
+   MANDATORY RULES — apply to ALL jobs without exception:
+   - Line 1 = job POSITION/TITLE ONLY (e.g. "Pharmacist", "Engineer", "Manager"). NEVER put company/employer name on line 1.
+   - Line 2 = COMPANY | LOCATION | DATE — always use | pipe separators. NEVER omit them.
+   - Lines 3+ = bullet points starting with •. NEVER put job title at the bottom of bullets.
+   - Apply this format to the 1st, 2nd, 3rd, and EVERY job equally without exception.
+   - CRITICAL: NEVER move, transfer, or copy bullet points from one job to another. Each job's responsibilities must come ONLY from that job in the original input. You may rephrase and improve the language but NEVER reassign any bullet to a different job.
 2. Generate an array of 5-8 highly relevant "suggestedSoftSkills" based on the Job Description.
 3. Generate an array of 5-8 highly relevant "suggestedTechnicalSkills" based on the Job Description.
 4. LICENSE: Extract ONLY from the provided user data. Do NOT invent or add any license not explicitly mentioned in the input.
 5. INTERNSHIPS: Format each internship/training as: TITLE | COMPANY | LOCATION | DATE (on one line), then bullet points for details below it. Separate entries with a blank line.
 6. COURSES: Format each course as: COURSE NAME | DATE (on one line), then bullet points for details below it. Separate entries with a blank line.
-7. ADDITIONAL INFORMATION: Write a concise 2-3 sentence paragraph based ONLY on the candidate's summary, experience, and education. Do not copy from the license or language fields.
+7. ADDITIONAL INFORMATION: Write a concise 2-3 sentence paragraph based ONLY on the candidate's summary, experience, and education. Do not copy from the license or language fields. Do NOT mention the candidate's name.
 
 Return strictly this JSON format:
 {
@@ -43,6 +57,11 @@ Return strictly this JSON format:
 }`;
 
       userPrompt = `Target Job: ${targetJob}\nJob Description:\n${jobDescription || ''}\n\nUser Data:\n${builderData}`;
+
+    } else if (service === 'additionalInfoOnly') {
+      if (!builderData) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+      systemPrompt = `You are a professional CV writer. Generate a concise 2-3 sentence "Additional Information" paragraph for a CV candidate. Base it ONLY on the provided data. Do NOT invent anything not present. Output ONLY valid JSON: {"additionalInfo": "the paragraph here"}`;
+      userPrompt = `Candidate data:\n${builderData}`;
 
     } else if (service === 'linkedin') {
       if (!targetRole) {
@@ -85,6 +104,19 @@ STRICT WRITING RULES:
 3. KEEP THE TRUTH: Only use information that exists in the original CV. Do not invent jobs, degrees, or skills.
 4. BULLET POINTS: Format the experience section with clear bullet points (•) and line breaks between each point.
 5. PROFESSIONAL TONE: Every sentence must sound like it was written by a senior HR professional.
+6. SUMMARY LENGTH: Write the summary in maximum 4 lines. Be concise and impactful.
+7. EXPERIENCE FORMAT — follow this EXACT structure for every job:
+   JOB TITLE
+   COMPANY NAME | CITY, COUNTRY | Start Date – End Date
+   • Responsibility
+   [blank line between jobs]
+   Rules: Line 1 = job title only (no bullet). Line 2 = company|location|date (no bullet). Lines 3+ = bullet points only.
+   CRITICAL: NEVER move, transfer, or copy bullet points from one job to another. Each job's responsibilities must come ONLY from that job in the original CV. You may rephrase and improve the language but NEVER reassign any bullet to a different job.
+8. EDUCATION FORMAT — follow this EXACT structure for every degree:
+   DEGREE NAME
+   UNIVERSITY NAME | LOCATION | YEAR
+   [blank line between degrees]
+   Rules: Line 1 = degree name only. Line 2 = university|location|year (no bullet). Never add extra text.
 
 SCORING RULES:
 1. EXTRACT ADDRESS: Find the candidate's location from the CV header or contact section. If not found, output "Not provided".

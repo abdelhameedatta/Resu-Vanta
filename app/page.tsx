@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import UnlockButton from './components/UnlockButton';
+import PayPalWrapper from './components/PayPalWrapper';
 import ContactSection from './components/ContactSection';
 
 const PRICES = {
@@ -222,7 +222,7 @@ function sectionFromResume(resume, sectionNames) {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
-async function openPDFWindow(cv: any, title = 'Optimized CV') {
+async function openPDFWindow(cv: any, title = 'Optimized CV', builderExps?: any[], builderEdu?: any[]) {
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js');
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js');
   const pdfMake = (window as any).pdfMake;
@@ -230,7 +230,9 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
   const clean = (t: any) => !t ? '' : String(t)
     .replace(/^#+\s*/gm, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1');
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{2BFF}]/gu, '')
+    .replace(/\s{2,}/g, ' ');
 
   const MARGIN = 42;
   const LINE_W = 511;
@@ -252,42 +254,165 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
 
   if (cv.summary) { content.push(sec('SUMMARY')); content.push({ text: clean(cv.summary), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
 
-  if (cv.experience) {
+  if (cv.experience || (builderExps && builderExps.length > 0)) {
     content.push(sec('PROFESSIONAL EXPERIENCE'));
-    clean(cv.experience).split(/\n\s*\n/).forEach((block: string) => {
-      const lines = block.split('\n').filter((l: string) => l.trim());
-      if (!lines.length) return;
-      const firstLine = lines[0].trim().replace(/^[-*•]\s*/, '');
-      const rest = lines.slice(1);
-      const parts = firstLine.split('|').map((s: string) => s.trim());
-      const jobTitle = parts[0];
-      const company = parts.length >= 3 ? parts.slice(1, -1).join(' | ') : (parts[1] || '');
-      const date = parts.length >= 2 ? parts[parts.length - 1] : '';
-      const bullets: string[] = [];
-      rest.forEach((line: string) => {
-        const t = line.trim();
-        bullets.push(t.replace(/^[-*•]\s*/, ''));
+    const normalizeExp = (text: string): string => {
+      let t = text.replace(/([^\n])\s*•\s*/g, '$1\n• ');
+      const lines = t.split('\n');
+      const out: string[] = [];
+      let prevWasBullet = false;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) { out.push(''); prevWasBullet = false; continue; }
+        const isBullet = /^[•\-*]/.test(trimmed);
+        if (!isBullet && prevWasBullet && out.length > 0 && out[out.length-1] !== '') out.push('');
+        out.push(line);
+        prevWasBullet = isBullet;
+      }
+      return out.join('\n');
+    };
+    if (builderExps && builderExps.length > 0) {
+      const parseD = (str: string) => {
+        if (!str) return new Date(0);
+        const s = str.toLowerCase().trim();
+        if (s.includes('present') || s.includes('current')) return new Date();
+        const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+        for (let i = 0; i < months.length; i++) {
+          if (s.includes(months[i])) { const y = s.match(/\d{4}/); if (y) return new Date(+y[0], i, 1); }
+        }
+        const d = new Date(str); if (!isNaN(d.getTime())) return d;
+        const y = str.match(/\d{4}/); return y ? new Date(+y[0], 0, 1) : new Date(0);
+      };
+      const sorted = [...builderExps].sort((a: any, b: any) => {
+        const curA = !a.endDate || a.endDate.toLowerCase().includes('present') || a.endDate.toLowerCase().includes('current');
+        const curB = !b.endDate || b.endDate.toLowerCase().includes('present') || b.endDate.toLowerCase().includes('current');
+        if (curA && !curB) return -1;
+        if (!curA && curB) return 1;
+        return parseD(b.endDate || b.startDate).getTime() - parseD(a.endDate || a.startDate).getTime();
       });
-      if (jobTitle) content.push({ text: jobTitle.toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
-      if (company || date) content.push({ columns: [{ text: company, fontSize: 10 }, { text: date, fontSize: 10, alignment: 'right' }], margin: [0, 1, 0, 3] });
-      bullets.forEach((b: string) => content.push({ text: `• ${b}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] }));
+      const aiBlocks = cv.experience ? normalizeExp(clean(cv.experience)).split(/\n\s*\n/) : [];
+      sorted.forEach((exp: any, i: number) => {
+        const jobTitle = (exp.jobTitle || '').trim();
+        const company = [exp.company, exp.location].filter(Boolean).join(' | ');
+        const date = [exp.startDate, exp.endDate || 'Present'].filter(Boolean).join(' – ');
+        if (jobTitle) content.push({ text: jobTitle.toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+        if (company || date) content.push({ columns: [{ text: company.toUpperCase(), fontSize: 10, bold: true }, { text: date.toUpperCase(), fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+        const block = aiBlocks[i] || '';
+        const bulletLines = block.split('\n').filter((l: string) => /^[•\-*]/.test(l.trim()));
+        if (bulletLines.length > 0) {
+          bulletLines.forEach((line: string) => {
+            const t = line.trim().replace(/^[-*•]\s*/, '');
+            if (t) content.push({ text: `• ${t}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] });
+          });
+        } else {
+          const r = (exp.responsibilities || '').split('\n').map((x: string) => x.replace(/^\d+[-.)]\s*/, '').trim()).filter(Boolean);
+          const a = (exp.achievements || '').split('\n').map((x: string) => x.replace(/^\d+[-.)]\s*/, '').trim()).filter(Boolean);
+          [...r, ...a].forEach((t: string) => {
+            if (t) content.push({ text: `• ${t}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] });
+          });
+        }
+      });
+    } else {
+      normalizeExp(clean(cv.experience)).split(/\n\s*\n/).forEach((block: string) => {
+        const lines = block.split('\n').filter((l: string) => l.trim());
+        if (!lines.length) return;
+        const firstClean = lines[0].trim().replace(/^[-*•]\s*/, '');
+        let jobTitle = '', company = '', date = '', bulletStart = 1;
+        if (firstClean.includes('|')) {
+          const parts = firstClean.split('|').map((s: string) => s.trim());
+          jobTitle = parts[0];
+          company = parts.length >= 3 ? parts.slice(1, -1).join(' | ') : (parts[1] || '');
+          date = parts.length >= 2 ? parts[parts.length - 1] : '';
+          bulletStart = 1;
+        } else {
+          jobTitle = firstClean;
+          if (lines.length > 1) {
+            const secondClean = lines[1].trim().replace(/^[-*•]\s*/, '');
+            if (secondClean.includes('|')) {
+              const parts = secondClean.split('|').map((s: string) => s.trim());
+              company = parts.slice(0, -1).join(' | ');
+              date = parts[parts.length - 1] || '';
+              bulletStart = 2;
+            }
+          }
+        }
+        if (jobTitle) content.push({ text: jobTitle.toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+        if (company || date) content.push({ columns: [{ text: company.toUpperCase(), fontSize: 10, bold: true }, { text: date ? date.toUpperCase() : '', fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+        lines.slice(bulletStart).forEach((line: string) => {
+          const t = line.trim().replace(/^[-*•]\s*/, '');
+          if (t) content.push({ text: `• ${t}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] });
+        });
+      });
+    }
+  }
+
+  if (builderEdu && builderEdu.length > 0) {
+    content.push(sec('EDUCATION'));
+    builderEdu.forEach((edu: any) => {
+      const degree = (edu.degree || '').trim();
+      const uniLoc = [edu.university, edu.educationCountry].filter(Boolean).join(' | ');
+      const year = (edu.graduationYear || '').trim();
+      if (degree) content.push({ text: degree, fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      if (uniLoc || year) content.push({ columns: [{ text: uniLoc.toUpperCase(), fontSize: 10, bold: true }, { text: year.toUpperCase(), fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+    });
+  } else if (cv.education) {
+    content.push(sec('EDUCATION'));
+    const rawEdu = String(cv.education).replace(/^#+\s*/gm,'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1');
+    const eduBlocks = rawEdu.split(/\n\s*\n/).filter((b: string) => b.trim());
+    const eduEntries = eduBlocks.length > 1 ? eduBlocks : rawEdu.split('\n').filter((l: string) => l.trim());
+    eduEntries.forEach((entry: string) => {
+      const lines = entry.split('\n').filter((l: string) => l.trim());
+      const firstLine = (lines[0] || '').trim();
+      let degree = '', uniLoc = '', year = '';
+      if (lines.length === 1) {
+        if (firstLine.includes(' - ')) {
+          const dashIdx = firstLine.indexOf(' - ');
+          degree = firstLine.slice(0, dashIdx).trim();
+          const rest = firstLine.slice(dashIdx + 3);
+          const parts = rest.split('|').map((s: string) => s.trim());
+          uniLoc = parts.slice(0, -1).join(' | ') || parts[0] || '';
+          year = parts[parts.length - 1] || '';
+        } else if (firstLine.includes('|')) {
+          const parts = firstLine.split('|').map((s: string) => s.trim());
+          degree = parts[0];
+          year = parts[parts.length - 1];
+          uniLoc = parts.length >= 3 ? parts.slice(1, -1).join(' | ') : (parts[1] || '');
+        } else { degree = firstLine; }
+      } else {
+        degree = firstLine;
+        const secondLine = (lines[1] || '').trim();
+        if (secondLine.includes('|')) {
+          const parts = secondLine.split('|').map((s: string) => s.trim());
+          year = parts[parts.length - 1];
+          uniLoc = parts.slice(0, -1).join(' | ');
+        } else { uniLoc = secondLine; }
+      }
+      if (degree) content.push({ text: degree, fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      if (uniLoc || year) content.push({ columns: [{ text: uniLoc.toUpperCase(), fontSize: 10, bold: true }, { text: year.toUpperCase(), fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
     });
   }
 
-  if (cv.education) { content.push(sec('EDUCATION')); content.push({ text: clean(cv.education), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
-
+  const fmtSkillsB = (text: any) => { const lines = clean(text).split(/\n/).map((s:string)=>s.replace(/^\d+[-.)]\s*/,'').trim()).filter(Boolean); if (lines.length>1) return lines.join(' | '); return clean(text).split(/[,،•]/).map((s:string)=>s.trim()).filter(Boolean).join(' | '); };
   if (cv.softSkills || cv.technicalSkills) {
     content.push(sec('SKILLS'));
-    if (cv.softSkills) content.push({ text: [{ text: 'Soft Skills: ', bold: true }, clean(cv.softSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
-    if (cv.technicalSkills) content.push({ text: [{ text: 'Technical Skills: ', bold: true }, clean(cv.technicalSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
+    if (cv.softSkills) content.push({ text: [{ text: 'Soft Skills: ', bold: true }, fmtSkillsB(cv.softSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
+    if (cv.technicalSkills) content.push({ text: [{ text: 'Technical Skills: ', bold: true }, fmtSkillsB(cv.technicalSkills)], fontSize: 10, color: '#111827', margin: [0, 0, 0, 3] });
   }
 
   const renderTrainingBlocks = (text: string) => {
-    clean(text).split(/\n\s*\n/).forEach((block: string) => {
+    const rawText = String(text || '').replace(/^#+\s*/gm,'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1');
+    rawText.split(/\n\s*\n/).filter((b: string) => b.trim()).forEach((block: string) => {
       const lines = block.split('\n').filter((l: string) => l.trim());
       if (!lines.length) return;
-      const title = lines[0].trim().replace(/^[-*•]\s*/, '');
-      if (title) content.push({ text: title, fontSize: 10, bold: true, color: '#000', margin: [0, 3, 0, 1] });
+      const titleLine = lines[0].trim().replace(/^[-*•]\s*/, '');
+      if (titleLine.includes('|')) {
+        const parts = titleLine.split('|').map((s: string) => s.trim());
+        const name = parts.slice(0, -1).join(' | ');
+        const date = parts[parts.length - 1];
+        content.push({ columns: [{ text: name, fontSize: 10, bold: true, color: '#000' }, { text: date, fontSize: 10, bold: true, color: '#000', alignment: 'right' }], margin: [0, 4, 0, 1] });
+      } else {
+        if (titleLine) content.push({ text: titleLine, fontSize: 10, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      }
       lines.slice(1).forEach((d: string) => {
         const dt = d.trim().replace(/^[-*•\-]\s*/, '');
         if (dt) content.push({ text: `• ${dt}`, fontSize: 10, color: '#222', margin: [10, 0, 0, 1] });
@@ -306,6 +431,218 @@ async function openPDFWindow(cv: any, title = 'Optimized CV') {
     .forEach(([label, val]) => { if (val) { content.push(sec(label)); content.push({ text: clean(val), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); } });
 
   pdfMake.createPdf({ pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], defaultStyle: { font: 'Roboto' }, content }).download(`${title.replace(/\s+/g, '_')}.pdf`);
+}
+
+// ─── Experience helpers ───────────────────────────────────────────────────────
+function parseExperienceToJobs(text) {
+  if (!text) return [];
+  return text.split(/\n\s*\n/).map(block => {
+    const lines = block.split('\n').filter(l => l.trim());
+    if (!lines.length) return null;
+    const title = lines[0].trim().replace(/^[-*•]\s*/, '');
+    let company = '', location = '', dates = '', bulletStart = 1;
+    if (lines.length > 1) {
+      const second = lines[1].trim().replace(/^[-*•]\s*/, '');
+      if (second.includes('|')) {
+        const parts = second.split('|').map(s => s.trim());
+        company = parts[0] || '';
+        if (parts.length >= 3) { location = parts.slice(1, -1).join(', '); dates = parts[parts.length - 1]; }
+        else { dates = parts[1] || ''; }
+        bulletStart = 2;
+      }
+    }
+    const bullets = lines.slice(bulletStart).map(l => l.trim().replace(/^[-*•]\s*/, '')).filter(Boolean).join('\n');
+    return { title, company, location, dates, bullets };
+  }).filter(Boolean);
+}
+
+function jobsToExperienceText(jobs) {
+  return jobs.map(job => {
+    const meta = [job.company, job.location, job.dates].filter(Boolean).join(' | ');
+    const bullets = job.bullets.split('\n').filter(l => l.trim()).map(l => `• ${l.replace(/^[-*•]\s*/, '')}`).join('\n');
+    return [job.title, meta, bullets].filter(Boolean).join('\n');
+  }).join('\n\n');
+}
+
+function parseEducationToCards(text) {
+  if (!text) return [];
+  return text.split(/\n\s*\n/).map(block => {
+    const lines = block.split('\n').filter(l => l.trim());
+    if (!lines.length) return null;
+    const degree = lines[0].trim().replace(/^[-*•]\s*/, '');
+    let university = '', location = '', year = '';
+    if (lines.length > 1) {
+      const second = lines[1].trim().replace(/^[-*•]\s*/, '');
+      if (second.includes('|')) {
+        const parts = second.split('|').map(s => s.trim());
+        university = parts[0] || '';
+        if (parts.length >= 3) { location = parts.slice(1, -1).join(', '); year = parts[parts.length - 1]; }
+        else { year = parts[1] || ''; }
+      } else {
+        university = second;
+      }
+    }
+    return { degree, university, location, year };
+  }).filter(Boolean);
+}
+
+function educationCardsToText(cards) {
+  return cards.map(card => {
+    const meta = [card.university, card.location, card.year].filter(Boolean).join(' | ');
+    return [card.degree, meta].filter(Boolean).join('\n');
+  }).join('\n\n');
+}
+
+// ─── PDF (CV Optimization only) ───────────────────────────────────────────────
+async function openOptimizationPDFWindow(cv: any, jobs: any[], hidden: Record<string,boolean>, eduCards: any[], title = 'Optimized CV'): Promise<string> {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js');
+  const pdfMake = (window as any).pdfMake;
+
+  const clean = (t: any) => !t ? '' : String(t)
+    .replace(/^#+\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{2BFF}]/gu, '')
+    .replace(/\s{2,}/g, ' ');
+
+  const MARGIN = 42;
+  const LINE_W = 511;
+
+  const sec = (label: string) => ({
+    stack: [
+      { text: label, fontSize: 10, bold: true, color: '#111827' },
+      { canvas: [{ type: 'line', x1: 0, y1: 2, x2: LINE_W, y2: 2, lineWidth: 1.5, lineColor: '#111827' }] },
+    ],
+    margin: [0, 12, 0, 6],
+  });
+
+  const content: any[] = [];
+
+  content.push({ text: clean(cv.name).toUpperCase(), fontSize: 20, bold: true, alignment: 'center', margin: [0, 0, 0, 3] });
+
+  const contact = [cv.address && `ADDRESS: ${clean(cv.address)}`, cv.phone && `PHONE: ${clean(cv.phone)}`, cv.email && `E-MAIL: ${clean(cv.email)}`, cv.linkedin && `LinkedIn: ${clean(cv.linkedin)}`].filter(Boolean).join(' | ');
+  content.push({ text: contact, fontSize: 9, color: '#374151', alignment: 'center', margin: [0, 0, 0, 14] });
+
+  if (!hidden.summary && cv.summary) { content.push(sec('SUMMARY')); content.push({ text: clean(cv.summary), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
+
+  if (jobs && jobs.length > 0) {
+    content.push(sec('PROFESSIONAL EXPERIENCE'));
+    jobs.forEach((job: any) => {
+      const jobTitle = (job.title || '').trim();
+      const companyText = [job.company, job.location].filter(Boolean).join(' | ');
+      const date = (job.dates || '').trim();
+      if (jobTitle) content.push({ text: jobTitle.toUpperCase(), fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      if (companyText || date) content.push({ columns: [{ text: companyText.toUpperCase(), fontSize: 10, bold: true }, { text: date ? date.toUpperCase() : '', fontSize: 10, bold: true, alignment: 'right' }], margin: [0, 1, 0, 3] });
+      (job.bullets || '').split('\n').filter((l: string) => l.trim()).forEach((line: string) => {
+        const t = line.trim().replace(/^[-*•]\s*/, '');
+        if (t) content.push({ text: `• ${t}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] });
+      });
+    });
+  }
+
+  if (!hidden.education && eduCards && eduCards.length > 0) {
+    content.push(sec('EDUCATION'));
+    eduCards.forEach((edu: any) => {
+      if (edu.degree) content.push({ text: edu.degree, fontSize: 11, bold: true, color: '#000', margin: [0, 4, 0, 1] });
+      const uniLocation = [edu.university, edu.location].filter(Boolean).join(' | ');
+      if (uniLocation || edu.year) {
+        content.push({ columns: [{ text: uniLocation, fontSize: 10 }, { text: edu.year || '', fontSize: 10, alignment: 'right' }], margin: [0, 1, 0, 3] });
+      }
+    });
+  }
+
+  const fmtSkills = (text: string) => clean(text).split(/[,،•]/).map((s:string) => s.trim()).filter(Boolean).join(' | ');
+
+  const showSoft = !hidden.softSkills && cv.softSkills;
+  const showTech = !hidden.technicalSkills && cv.technicalSkills;
+  if (showSoft || showTech) {
+    content.push(sec('SKILLS'));
+    if (showSoft) content.push({ text: [{ text: 'Soft Skills: ', bold: true }, fmtSkills(cv.softSkills)], fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 3] });
+    if (showTech) content.push({ text: [{ text: 'Technical Skills: ', bold: true }, fmtSkills(cv.technicalSkills)], fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 3] });
+  }
+
+  const renderTrainingBlocks = (text: string) => {
+    const isDateOnly = (s: string) => /^(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\.?$/.test(s.trim());
+    let entries: string[];
+    if (/\n\s*\n/.test(text)) {
+      entries = text.split(/\n\s*\n/).filter((b: string) => b.trim());
+    } else if (/\n/.test(text)) {
+      const allLines = text.split('\n').filter((l: string) => l.trim());
+      entries = [];
+      let cur: string[] = [];
+      allLines.forEach((line: string) => {
+        const isBullet = /^[-*•]/.test(line.trim());
+        if (!isBullet && line.includes('|') && cur.length > 0) {
+          entries.push(cur.join('\n'));
+          cur = [line.trim()];
+        } else { cur.push(line.trim()); }
+      });
+      if (cur.length) entries.push(cur.join('\n'));
+    } else {
+      const rawEntries: string[] = [];
+      let cur = '';
+      text.split(', ').forEach((piece: string) => {
+        if (cur && piece.includes(' | ')) {
+          const afterBar = (piece.split(' | ').pop() || '').split(',')[0].trim();
+          if (isDateOnly(afterBar)) { rawEntries.push(cur); cur = piece; return; }
+        }
+        cur = cur ? cur + ', ' + piece : piece;
+      });
+      if (cur) rawEntries.push(cur);
+      entries = rawEntries.length > 0 ? rawEntries : [text];
+    }
+    entries.forEach((entry: string) => {
+      const lines = entry.split('\n').filter((l: string) => l.trim());
+      if (!lines.length) return;
+      const titleParts = lines[0].trim().replace(/^[-*•]\s*/, '').split('|').map((s: string) => s.trim());
+      const blockTitle = titleParts[0];
+      let rawDate = titleParts.length > 1 ? titleParts[titleParts.length - 1] : '';
+      let inlineDesc = '';
+      const dashIdx = rawDate.indexOf(' - ');
+      if (dashIdx !== -1 && rawDate.slice(dashIdx + 3).trim().length > 10) {
+        inlineDesc = rawDate.slice(dashIdx + 3).trim();
+        rawDate = rawDate.slice(0, dashIdx).trim();
+      }
+      if (blockTitle) {
+        if (rawDate) {
+          content.push({ columns: [{ text: blockTitle, fontSize: 10, bold: true }, { text: rawDate, fontSize: 10, alignment: 'right' }], margin: [0, 3, 0, 1] });
+        } else {
+          content.push({ text: blockTitle, fontSize: 10, bold: true, color: '#000', margin: [0, 3, 0, 1] });
+        }
+      }
+      if (inlineDesc) {
+        inlineDesc.split(/,\s+/).forEach((item: string) => {
+          const t = item.trim();
+          if (t) content.push({ text: `• ${t}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] });
+        });
+      }
+      lines.slice(1).forEach((d: string) => {
+        const dt = d.trim().replace(/^[-*•\-]\s*/, '');
+        if (dt) content.push({ text: `• ${dt}`, fontSize: 10, color: '#222', alignment: 'justify', margin: [10, 0, 0, 1] });
+      });
+    });
+  };
+
+  if (!hidden.internshipCourses) {
+    if (cv.internships) { content.push(sec('INTERNSHIPS')); renderTrainingBlocks(cv.internships); }
+    if (cv.courses) { content.push(sec('COURSES')); renderTrainingBlocks(cv.courses); }
+    if (!cv.internships && !cv.courses && cv.internshipCourses) {
+      content.push(sec('INTERNSHIP AND COURSES'));
+      renderTrainingBlocks(cv.internshipCourses);
+    }
+  }
+
+  if (!hidden.additionalInfo && cv.additionalInfo) { content.push(sec('ADDITIONAL INFORMATION')); content.push({ text: clean(cv.additionalInfo), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
+  if (!hidden.language && cv.language) { content.push(sec('LANGUAGE')); content.push({ text: clean(cv.language), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
+  if (!hidden.license && cv.license) { content.push(sec('LICENSE')); content.push({ text: clean(cv.license), fontSize: 10, color: '#111827', alignment: 'justify', margin: [0, 0, 0, 4] }); }
+
+  const docDef = { pageSize: 'A4', pageMargins: [MARGIN, MARGIN, MARGIN, MARGIN], defaultStyle: { font: 'Roboto' }, content };
+  const pdfDoc = pdfMake.createPdf(docDef);
+  pdfDoc.download(`${title.replace(/\s+/g, '_')}.pdf`);
+  return new Promise<string>((resolve) => {
+    pdfDoc.getBase64((data: string) => resolve(data));
+  });
 }
 
 // ─── Animated Bar ─────────────────────────────────────────────────────────────
@@ -367,7 +704,7 @@ function CVTemplatePreview({ cv }) {
         <p><b>Soft Skills:</b> {cv.softSkills}</p>
         <p><b>Technical Skills:</b> {cv.technicalSkills}</p>
       </div>
-      <CVSection title="INTERNSHIP AND COURSES" content={cv.internshipCourses} />
+      <CVSection title="INTERNSHIP AND COURSES" content={(cv.internships || cv.courses) ? [cv.internships, cv.courses].filter(Boolean).join('\n\n') : cv.internshipCourses} />
       <CVSection title="ADDITIONAL INFORMATION" content={cv.additionalInfo} />
       <CVSection title="LANGUAGE:" content={cv.language} />
       <CVSection title="ANY LICENSE" content={cv.license} />
@@ -570,12 +907,17 @@ function OptimizationPage() {
   const [jobDescription, setJobDescription] = useState('');
   const [result, setResult] = useState(null);
   const [paidCV, setPaidCV] = useState(null);
+  const [paidCVJobs, setPaidCVJobs] = useState([]);
+  const [paidCVEducation, setPaidCVEducation] = useState([]);
   const [profSentences, setProfSentences] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestedAchievements, setSuggestedAchievements] = useState([]);
   const [selectedAchievements, setSelectedAchievements] = useState([]);
+  const [hiddenFields, setHiddenFields] = useState<Record<string,boolean>>({});
+  const toggleHide = (field: string) => setHiddenFields(prev => ({...prev, [field]: !prev[field]}));
+  const hBtn = (field: string): React.CSSProperties => ({ fontSize:10, padding:'2px 9px', borderRadius:4, border:`1px solid ${hiddenFields[field]?'#cbd5e1':'#94a3b8'}`, background:hiddenFields[field]?'#f1f5f9':'transparent', color:hiddenFields[field]?'#94a3b8':'#64748b', cursor:'pointer' });
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [remainingOutputs, setRemainingOutputs] = useState(3);
   const [showPdfWarning, setShowPdfWarning] = useState(false);
@@ -672,7 +1014,7 @@ function OptimizationPage() {
       };
       const newCount = increaseUsageCount('optimization');
       const remaining = Math.max(0,3-newCount);
-      setResult(analysis); setPaidCV(cv); setProfSentences([]); setError('');
+      setResult(analysis); setPaidCV(cv); setPaidCVJobs(parseExperienceToJobs(cv.experience || '')); setPaidCVEducation(parseEducationToCards(cv.education || '')); setProfSentences([]); setError('');
       setRemainingOutputs(remaining);
       setMessage(`CV generated successfully. You have ${remaining} CV output(s) remaining.`);
     } catch(e) {
@@ -800,17 +1142,33 @@ function OptimizationPage() {
                 </button>
               </div>
             ) : (
-              <UnlockButton
+              <PayPalWrapper
                 service="optimization"
                 label={`Optimize My CV — ${PRICES.optimization}`}
-                onBeforeRedirect={() => {
+                onBeforePayment={() => {
                   if (!resume.trim() || !jobDescription.trim()) {
                     throw new Error('Please upload your CV and paste the job description first.');
                   }
-                  sessionStorage.setItem(
-                    'resuvanta_pending_optimization',
-                    JSON.stringify({ resume, jobDescription })
-                  );
+                  sessionStorage.setItem('resuvanta_pending_optimization', JSON.stringify({ resume, jobDescription }));
+                }}
+                onSuccess={() => {
+                  const saved = sessionStorage.getItem('resuvanta_pending_optimization');
+                  if (saved) {
+                    try {
+                      const data = JSON.parse(saved);
+                      const savedResume = data.resume || '';
+                      const savedJobDescription = data.jobDescription || '';
+                      const used = getUsageCount('optimization');
+                      const remaining = Math.max(0, 3 - used);
+                      setResume(savedResume);
+                      setJobDescription(savedJobDescription);
+                      setPaymentConfirmed(true);
+                      setRemainingOutputs(remaining);
+                      if (savedResume.trim() && savedJobDescription.trim())
+                        setResult(analyzeResume(savedResume, savedJobDescription));
+                      setMessage(`Payment confirmed. You can generate up to ${remaining} optimized CV output(s).`);
+                    } catch { setError('Payment confirmed, but we could not restore your saved data.'); }
+                  } else { setPaymentConfirmed(true); setMessage('Payment confirmed!'); }
                 }}
               />
             )}
@@ -833,54 +1191,120 @@ function OptimizationPage() {
             <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Personal Information</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Full Name</label><input value={paidCV.name} onChange={e=>updatePaidCVField('name',e.target.value)} placeholder="e.g. John Smith"/></div>
-              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Phone Number</label><input value={paidCV.phone} onChange={e=>updatePaidCVField('phone',e.target.value)} placeholder="e.g. +971 50 123 4567"/></div>
-              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Email Address</label><input value={paidCV.email} onChange={e=>updatePaidCVField('email',e.target.value)} placeholder="e.g. name@email.com"/></div>
-              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>LinkedIn URL</label><input value={paidCV.linkedin} onChange={e=>updatePaidCVField('linkedin',e.target.value)} placeholder="e.g. linkedin.com/in/yourname"/></div>
-              <div style={{gridColumn:'span 2'}}><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Address</label><input value={paidCV.address||''} onChange={e=>updatePaidCVField('address',e.target.value)} placeholder="e.g. Sharjah, UAE"/></div>
+              <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Phone Number</label><button onClick={()=>toggleHide('phone')} style={hBtn('phone')}>{hiddenFields.phone?'Show':'Hide'}</button></div><input value={paidCV.phone} onChange={e=>updatePaidCVField('phone',e.target.value)} placeholder="e.g. +971 50 123 4567" style={{opacity:hiddenFields.phone?0.4:1}}/></div>
+              <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Email Address</label><button onClick={()=>toggleHide('email')} style={hBtn('email')}>{hiddenFields.email?'Show':'Hide'}</button></div><input value={paidCV.email} onChange={e=>updatePaidCVField('email',e.target.value)} placeholder="e.g. name@email.com" style={{opacity:hiddenFields.email?0.4:1}}/></div>
+              <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>LinkedIn URL</label><button onClick={()=>toggleHide('linkedin')} style={hBtn('linkedin')}>{hiddenFields.linkedin?'Show':'Hide'}</button></div><input value={paidCV.linkedin} onChange={e=>updatePaidCVField('linkedin',e.target.value)} placeholder="e.g. linkedin.com/in/yourname" style={{opacity:hiddenFields.linkedin?0.4:1}}/></div>
+              <div style={{gridColumn:'span 2'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Address</label><button onClick={()=>toggleHide('address')} style={hBtn('address')}>{hiddenFields.address?'Show':'Hide'}</button></div><input value={paidCV.address||''} onChange={e=>updatePaidCVField('address',e.target.value)} placeholder="e.g. Sharjah, UAE" style={{opacity:hiddenFields.address?0.4:1}}/></div>
             </div>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Professional Summary</p>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid #E5E0D6',paddingBottom:8,marginBottom:6}}><p style={{fontWeight:700,fontSize:15,color:'#1C1A16',margin:0}}>Professional Summary</p><button onClick={()=>toggleHide('summary')} style={hBtn('summary')}>{hiddenFields.summary?'Show':'Hide'}</button></div>
             <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Write 3–5 sentences about your background, skills, and career goal.</p>
-            <textarea style={{minHeight:120}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
+            <textarea style={{minHeight:120,opacity:hiddenFields.summary?0.4:1}} value={paidCV.summary} onChange={e=>updatePaidCVField('summary',e.target.value)} placeholder="e.g. Results-focused pharmacist with 5+ years of experience..."/>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Professional Experience</p>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>List each role with company, dates, and key achievements.</p>
-            <textarea style={{minHeight:160}} value={paidCV.experience} onChange={e=>updatePaidCVField('experience',e.target.value)} placeholder={'e.g.\nSenior Pharmacist — MedCare Hospital (2020–present)\n• Managed daily dispensing for 200+ patients'}/>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>Each job is a separate card — edit any field and the PDF will update automatically.</p>
+            {paidCVJobs.map((job, idx) => (
+              <div key={idx} style={{border:'1px solid #E5E0D6',borderRadius:12,padding:16,marginBottom:12,background:'#FAFAF8'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <span style={{fontWeight:700,fontSize:13,color:'#1C1A16'}}>Job {idx+1}</span>
+                  <button className="secondary" style={{fontSize:12,padding:'3px 10px',color:'#dc2626',border:'1px solid #dc2626'}} onClick={()=>{
+                    const updated=paidCVJobs.filter((_,i)=>i!==idx);
+                    setPaidCVJobs(updated);
+                    updatePaidCVField('experience',jobsToExperienceText(updated));
+                  }}>Remove</button>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                  <div>
+                    <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Job Title</label>
+                    <input value={job.title} onChange={e=>{const u=[...paidCVJobs];u[idx]={...u[idx],title:e.target.value};setPaidCVJobs(u);updatePaidCVField('experience',jobsToExperienceText(u));}} placeholder="e.g. Senior Pharmacist"/>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Company</label>
+                    <input value={job.company} onChange={e=>{const u=[...paidCVJobs];u[idx]={...u[idx],company:e.target.value};setPaidCVJobs(u);updatePaidCVField('experience',jobsToExperienceText(u));}} placeholder="e.g. MedCare Hospital"/>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Location</label>
+                    <input value={job.location} onChange={e=>{const u=[...paidCVJobs];u[idx]={...u[idx],location:e.target.value};setPaidCVJobs(u);updatePaidCVField('experience',jobsToExperienceText(u));}} placeholder="e.g. Dubai, UAE"/>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Dates</label>
+                    <input value={job.dates} onChange={e=>{const u=[...paidCVJobs];u[idx]={...u[idx],dates:e.target.value};setPaidCVJobs(u);updatePaidCVField('experience',jobsToExperienceText(u));}} placeholder="e.g. Jan 2021 – Present"/>
+                  </div>
+                </div>
+                <div>
+                  <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Responsibilities (one line per point)</label>
+                  <textarea style={{minHeight:100}} value={job.bullets} onChange={e=>{const u=[...paidCVJobs];u[idx]={...u[idx],bullets:e.target.value};setPaidCVJobs(u);updatePaidCVField('experience',jobsToExperienceText(u));}} placeholder={'Managed daily dispensing for 200+ patients\nStreamlined insurance approvals...'}/>
+                </div>
+              </div>
+            ))}
+            <button className="secondary" style={{fontSize:13,marginTop:4}} onClick={()=>{
+              const u=[...paidCVJobs,{title:'',company:'',location:'',dates:'',bullets:''}];
+              setPaidCVJobs(u);
+              updatePaidCVField('experience',jobsToExperienceText(u));
+            }}>+ Add Job</button>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Education</p>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Include your degree, university, graduation year, and country.</p>
-            <textarea style={{minHeight:80}} value={paidCV.education} onChange={e=>updatePaidCVField('education',e.target.value)} placeholder={'e.g.\nBachelor of Pharmacy\nCairo University | 2018 | Egypt'}/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid #E5E0D6',paddingBottom:8,marginBottom:6}}><p style={{fontWeight:700,fontSize:15,color:'#1C1A16',margin:0}}>Education</p><button onClick={()=>toggleHide('education')} style={hBtn('education')}>{hiddenFields.education?'Show':'Hide'}</button></div>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>Each degree is a separate card.</p>
+            <div style={{opacity:hiddenFields.education?0.4:1}}>
+              {paidCVEducation.map((edu, idx) => (
+                <div key={idx} style={{border:'1px solid #E5E0D6',borderRadius:12,padding:16,marginBottom:12,background:'#FAFAF8'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                    <span style={{fontWeight:700,fontSize:13,color:'#1C1A16'}}>Degree {idx+1}</span>
+                    {paidCVEducation.length > 1 && <button className="secondary" style={{fontSize:12,padding:'3px 10px',color:'#dc2626',border:'1px solid #dc2626'}} onClick={()=>{const u=paidCVEducation.filter((_,i)=>i!==idx);setPaidCVEducation(u);updatePaidCVField('education',educationCardsToText(u));}}>Remove</button>}
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    <div>
+                      <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Degree Name</label>
+                      <input value={edu.degree} onChange={e=>{const u=[...paidCVEducation];u[idx]={...u[idx],degree:e.target.value};setPaidCVEducation(u);updatePaidCVField('education',educationCardsToText(u));}} placeholder="e.g. Bachelor of Pharmacy"/>
+                    </div>
+                    <div>
+                      <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>University</label>
+                      <input value={edu.university} onChange={e=>{const u=[...paidCVEducation];u[idx]={...u[idx],university:e.target.value};setPaidCVEducation(u);updatePaidCVField('education',educationCardsToText(u));}} placeholder="e.g. Cairo University"/>
+                    </div>
+                    <div>
+                      <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Location</label>
+                      <input value={edu.location} onChange={e=>{const u=[...paidCVEducation];u[idx]={...u[idx],location:e.target.value};setPaidCVEducation(u);updatePaidCVField('education',educationCardsToText(u));}} placeholder="e.g. Cairo, Egypt"/>
+                    </div>
+                    <div>
+                      <label style={{display:'block',fontSize:11,color:'#64748b',marginBottom:3,fontWeight:700}}>Year</label>
+                      <input value={edu.year} onChange={e=>{const u=[...paidCVEducation];u[idx]={...u[idx],year:e.target.value};setPaidCVEducation(u);updatePaidCVField('education',educationCardsToText(u));}} placeholder="e.g. July 2020"/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button className="secondary" style={{fontSize:13,marginTop:4}} onClick={()=>{const u=[...paidCVEducation,{degree:'',university:'',location:'',year:''}];setPaidCVEducation(u);updatePaidCVField('education',educationCardsToText(u));}}>+ Add Degree</button>
+            </div>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Skills</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Soft Skills</label>
-                <textarea style={{minHeight:80}} value={paidCV.softSkills} onChange={e=>updatePaidCVField('softSkills',e.target.value)} placeholder="e.g. Communication, teamwork..."/>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Soft Skills</label><button onClick={()=>toggleHide('softSkills')} style={hBtn('softSkills')}>{hiddenFields.softSkills?'Show':'Hide'}</button></div>
+                <textarea style={{minHeight:80,opacity:hiddenFields.softSkills?0.4:1}} value={paidCV.softSkills} onChange={e=>updatePaidCVField('softSkills',e.target.value)} placeholder="e.g. Communication, teamwork..."/>
               </div>
               <div>
-                <label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Technical Skills</label>
-                <textarea style={{minHeight:80}} value={paidCV.technicalSkills} onChange={e=>updatePaidCVField('technicalSkills',e.target.value)} placeholder="e.g. Clinical pharmacy, dispensing..."/>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Technical Skills</label><button onClick={()=>toggleHide('technicalSkills')} style={hBtn('technicalSkills')}>{hiddenFields.technicalSkills?'Show':'Hide'}</button></div>
+                <textarea style={{minHeight:80,opacity:hiddenFields.technicalSkills?0.4:1}} value={paidCV.technicalSkills} onChange={e=>updatePaidCVField('technicalSkills',e.target.value)} placeholder="e.g. Clinical pharmacy, dispensing..."/>
               </div>
             </div>
           </div>
           <div style={{marginBottom:20}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Internship and Courses</p>
-            <textarea style={{minHeight:100}} value={paidCV.internshipCourses} onChange={e=>updatePaidCVField('internshipCourses',e.target.value)} placeholder={'e.g.\nPharmacy Internship — Cairo Hospital (2017)'}/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid #E5E0D6',paddingBottom:8,marginBottom:6}}><p style={{fontWeight:700,fontSize:15,color:'#1C1A16',margin:0}}>Internship and Courses</p><button onClick={()=>toggleHide('internshipCourses')} style={hBtn('internshipCourses')}>{hiddenFields.internshipCourses?'Show':'Hide'}</button></div>
+            <textarea style={{minHeight:100,opacity:hiddenFields.internshipCourses?0.4:1}} value={paidCV.internshipCourses} onChange={e=>updatePaidCVField('internshipCourses',e.target.value)} placeholder={'e.g.\nPharmacy Internship — Cairo Hospital (2017)'}/>
           </div>
           <div style={{marginBottom:20}}>
             <p style={{fontWeight:700,fontSize:15,marginBottom:12,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Additional Details</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Languages</label><input value={paidCV.language} onChange={e=>updatePaidCVField('language',e.target.value)} placeholder="e.g. Arabic (native), English (fluent)"/></div>
-              <div><label style={{display:'block',fontSize:12,color:'#64748b',marginBottom:4,fontWeight:700}}>Licenses & Certifications</label><input value={paidCV.license} onChange={e=>updatePaidCVField('license',e.target.value)} placeholder="e.g. UAE Pharmacist License, DHA"/></div>
+              <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Languages</label><button onClick={()=>toggleHide('language')} style={hBtn('language')}>{hiddenFields.language?'Show':'Hide'}</button></div><input value={paidCV.language} onChange={e=>updatePaidCVField('language',e.target.value)} placeholder="e.g. Arabic (native), English (fluent)" style={{opacity:hiddenFields.language?0.4:1}}/></div>
+              <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><label style={{fontSize:12,color:'#64748b',fontWeight:700}}>Licenses & Certifications</label><button onClick={()=>toggleHide('license')} style={hBtn('license')}>{hiddenFields.license?'Show':'Hide'}</button></div><input value={paidCV.license} onChange={e=>updatePaidCVField('license',e.target.value)} placeholder="e.g. UAE Pharmacist License, DHA" style={{opacity:hiddenFields.license?0.4:1}}/></div>
             </div>
           </div>
           <div style={{marginBottom:24}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:6,color:'#1C1A16',borderBottom:'1px solid #E5E0D6',paddingBottom:8}}>Additional Information</p>
-            <textarea style={{minHeight:80}} value={paidCV.additionalInfo} onChange={e=>updatePaidCVField('additionalInfo',e.target.value)} placeholder="e.g. UAE driving license holder."/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid #E5E0D6',paddingBottom:8,marginBottom:6}}><p style={{fontWeight:700,fontSize:15,color:'#1C1A16',margin:0}}>Additional Information</p><button onClick={()=>toggleHide('additionalInfo')} style={hBtn('additionalInfo')}>{hiddenFields.additionalInfo?'Show':'Hide'}</button></div>
+            <textarea style={{minHeight:80,opacity:hiddenFields.additionalInfo?0.4:1}} value={paidCV.additionalInfo} onChange={e=>updatePaidCVField('additionalInfo',e.target.value)} placeholder="e.g. UAE driving license holder."/>
           </div>
           {paidCV?.scoreJustification && (
             <div style={{marginBottom:18,padding:14,background:'#FEF9EC',border:'1px solid #FDE68A',borderRadius:12}}>
@@ -975,11 +1399,21 @@ function OptimizationPage() {
 
           <button onClick={async ()=>{
             const doDownload = async () => {
-              await openPDFWindow(paidCV,'Optimized CV');
+              const base64 = await openOptimizationPDFWindow(paidCV, paidCVJobs, hiddenFields, paidCVEducation, 'Optimized CV');
+              const customerEmail = (paidCV as any)?.email;
+              if (customerEmail && base64) {
+                try {
+                  await fetch('/api/send-cv', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: customerEmail, base64, filename: 'Optimized_CV' }),
+                  });
+                } catch (_) {}
+              }
               clearServiceSession('optimization');
               setPaymentConfirmed(false); setRemainingOutputs(3);
               setResume(''); setJobDescription(''); setResult(null); setPaidCV(null); setProfSentences([]);
-              setMessage('PDF downloaded. Temporary session data has been cleared.');
+              setMessage('PDF downloaded. A copy has been sent to your email.');
             };
             if (!pdfWarningAcknowledged) { setPendingPdfDownload(()=>doDownload); setShowPdfWarning(true); return; }
             await doDownload();
@@ -1002,9 +1436,13 @@ function BuilderWizard() {
   const [pendingPdfDownload, setPendingPdfDownload] = useState<(() => Promise<void>) | null>(null);
   const [builder, setBuilder] = useState({
     targetJob:'',jobDescription:'',name:'',address:'',phone:'',email:'',linkedin:'',
-    degree:'',university:'',graduationYear:'',educationCountry:'',
-    experiences:[{jobTitle:'',company:'',location:'',startDate:'',endDate:'',responsibilities:'',achievements:''}],
-    softSkills:'',technicalSkills:'',internships:'',courses:'',languages:'',licenses:'',additionalInfo:'',
+    educations:[{degree:'',university:'',graduationYear:'',educationCountry:''}],
+    experiences:[{jobTitle:'',company:'',location:'',startDate:'',endDate:'',responsibilities:'1-\n2-\n3-\n4-\n5-',achievements:'1-\n2-\n3-'}],
+    softSkills:'1-\n2-\n3-\n4-\n5-',
+    technicalSkills:'1-\n2-\n3-\n4-\n5-',
+    internships:[{name:'',company:'',date:'',learned:'1-\n2-\n3-'}],
+    courses:[{name:'',company:'',date:'',learned:'1-\n2-\n3-'}],
+    languages:[{name:'',level:''}],licenses:'',additionalInfo:'',
   });
   const totalSteps = 7;
 
@@ -1012,6 +1450,9 @@ function BuilderWizard() {
   const [selectedSoftSkills, setSelectedSoftSkills] = useState([]);
   const [suggestedTechnicalSkills, setSuggestedTechnicalSkills] = useState([]);
   const [selectedTechnicalSkills, setSelectedTechnicalSkills] = useState([]);
+  const [additionalInfoMode, setAdditionalInfoMode] = useState<'edit'|'view'>('edit');
+  const [additionalInfoAiCount, setAdditionalInfoAiCount] = useState(0);
+  const [isGeneratingAdditionalInfo, setIsGeneratingAdditionalInfo] = useState(false);
 
   useEffect(()=>{
     const paymentService = sessionStorage.getItem('resuvanta_payment_success');
@@ -1024,34 +1465,86 @@ function BuilderWizard() {
         const used = getUsageCount('builder');
         setPaymentConfirmed(true);
         setRemainingOutputs(Math.max(0,3-used));
+        setStep(totalSteps);
       } catch {}
     }
   },[]);
 
   function updateBuilder(key,value) { setBuilder(old=>({...old,[key]:value})); }
+  function updateEducation(index,key,value) {
+    const updated=[...builder.educations]; updated[index]={...updated[index],[key]:value};
+    setBuilder(old=>({...old,educations:updated}));
+  }
+  function addEducation() { setBuilder(old=>({...old,educations:[...old.educations,{degree:'',university:'',graduationYear:'',educationCountry:''}]})); }
+  function removeEducation(index) { if (builder.educations.length===1) return; setBuilder(old=>({...old,educations:old.educations.filter((_,i)=>i!==index)})); }
+  function formatEducation() {
+    return builder.educations.map(e=>`${e.degree||'Degree'} - ${e.university||'University'} | ${e.graduationYear||'Year'} | ${e.educationCountry||'Country'}`).join('\n');
+  }
   function updateExperience(index,key,value) {
     const updated=[...builder.experiences]; updated[index][key]=value;
     setBuilder(old=>({...old,experiences:updated}));
   }
-  function addExperience() { setBuilder(old=>({...old,experiences:[...old.experiences,{jobTitle:'',company:'',location:'',startDate:'',endDate:'',responsibilities:'',achievements:''}]})); }
+  function addExperience() { setBuilder(old=>({...old,experiences:[...old.experiences,{jobTitle:'',company:'',location:'',startDate:'',endDate:'',responsibilities:'1-\n2-\n3-\n4-\n5-',achievements:'1-\n2-\n3-'}]})); }
   function removeExperience(index) { if (builder.experiences.length===1) return; setBuilder(old=>({...old,experiences:old.experiences.filter((_,i)=>i!==index)})); }
+  function updateInternship(index,key,value) { const u=[...builder.internships]; u[index]={...u[index],[key]:value}; setBuilder(old=>({...old,internships:u})); }
+  function addInternship() { setBuilder(old=>({...old,internships:[...old.internships,{name:'',company:'',date:'',learned:'1-\n2-\n3-'}]})); }
+  function removeInternship(index) { if (builder.internships.length===1) return; setBuilder(old=>({...old,internships:old.internships.filter((_,i)=>i!==index)})); }
+  function formatInternships() { return builder.internships.filter(i=>i.name||i.company||i.date).map(i=>{ const h=[i.name,i.company,i.date].filter(Boolean).join(' | '); const b=(i.learned||'').split('\n').map(l=>l.replace(/^\d+[-.)]\s*/,'').trim()).filter(Boolean).map(l=>`• ${l}`).join('\n'); return [h,b].filter(Boolean).join('\n'); }).join('\n\n'); }
+  function updateCourse(index,key,value) { const u=[...builder.courses]; u[index]={...u[index],[key]:value}; setBuilder(old=>({...old,courses:u})); }
+  function addCourse() { setBuilder(old=>({...old,courses:[...old.courses,{name:'',company:'',date:'',learned:'1-\n2-\n3-'}]})); }
+  function removeCourse(index) { if (builder.courses.length===1) return; setBuilder(old=>({...old,courses:old.courses.filter((_,i)=>i!==index)})); }
+  function formatCourses() { return builder.courses.filter(c=>c.name||c.company||c.date).map(c=>{ const h=[c.name,c.company,c.date].filter(Boolean).join(' | '); const b=(c.learned||'').split('\n').map(l=>l.replace(/^\d+[-.)]\s*/,'').trim()).filter(Boolean).map(l=>`• ${l}`).join('\n'); return [h,b].filter(Boolean).join('\n'); }).join('\n\n'); }
+  function updateLanguage(index,key,value) { const u=[...builder.languages]; u[index]={...u[index],[key]:value}; setBuilder(old=>({...old,languages:u})); }
+  function addLanguage() { setBuilder(old=>({...old,languages:[...old.languages,{name:'',level:''}]})); }
+  function removeLanguage(index) { if (builder.languages.length===1) return; setBuilder(old=>({...old,languages:old.languages.filter((_,i)=>i!==index)})); }
+  function formatLanguages() { return builder.languages.filter(l=>l.name).map(l=>l.level?`${l.name} (${l.level})`:l.name).join(' | '); }
+  function parseExpDate(str) {
+    if (!str) return new Date(0);
+    const s = str.toLowerCase().trim();
+    if (s.includes('present') || s.includes('current')) return new Date();
+    const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    for (let i = 0; i < months.length; i++) {
+      if (s.includes(months[i])) { const y = s.match(/\d{4}/); if (y) return new Date(+y[0], i, 1); }
+    }
+    const d = new Date(str); if (!isNaN(d.getTime())) return d;
+    const y = str.match(/\d{4}/); return y ? new Date(+y[0], 0, 1) : new Date(0);
+  }
   function formatExperience() {
     const sorted = [...builder.experiences].sort((a, b) => {
       const isCurrentA = !a.endDate || a.endDate.toLowerCase().includes('present') || a.endDate.toLowerCase().includes('current');
       const isCurrentB = !b.endDate || b.endDate.toLowerCase().includes('present') || b.endDate.toLowerCase().includes('current');
       if (isCurrentA && !isCurrentB) return -1;
       if (!isCurrentA && isCurrentB) return 1;
-      const dateA = new Date(a.endDate || a.startDate || '');
-      const dateB = new Date(b.endDate || b.startDate || '');
-      return dateB.getTime() - dateA.getTime();
+      return parseExpDate(b.endDate || b.startDate).getTime() - parseExpDate(a.endDate || a.startDate).getTime();
     });
     return sorted.map(exp => {
-      const r = exp.responsibilities.split('\n').map(x => x.trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '• Add main responsibilities here.';
-      const a = exp.achievements.split('\n').map(x => x.trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '';
+      const r = exp.responsibilities.split('\n').map(x => x.replace(/^\d+[-.)]\s*/, '').trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '• Add main responsibilities here.';
+      const a = exp.achievements.split('\n').map(x => x.replace(/^\d+[-.)]\s*/, '').trim()).filter(Boolean).map(x => `• ${x}`).join('\n') || '';
       return `${exp.jobTitle || 'Job Title'}\n${exp.company || 'Company Name'} | ${exp.location || 'Location'} | ${exp.startDate || 'Start Date'} - ${exp.endDate || 'End Date'}\n${r}\n${a}`;
     }).join('\n\n');
   }
   
+  async function generateAdditionalInfoOnly() {
+    if (additionalInfoAiCount >= 3 || isGeneratingAdditionalInfo) return;
+    setIsGeneratingAdditionalInfo(true);
+    try {
+      const data = [
+        `Name: ${builder.name}`, `Target Job: ${builder.targetJob}`,
+        `Education:\n${formatEducation()}`, `Experience:\n${formatExperience()}`,
+        `Soft Skills: ${builder.softSkills}`, `Technical Skills: ${builder.technicalSkills}`,
+        `Languages: ${formatLanguages()}`, `Licenses: ${builder.licenses}`,
+      ].join('\n');
+      const res = await fetch('/api/ai', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({service:'additionalInfoOnly', builderData:data}) });
+      const { parsed: p } = await res.json();
+      if (p?.additionalInfo) {
+        updateBuilder('additionalInfo', p.additionalInfo);
+        setAdditionalInfoAiCount(c => c + 1);
+        setAdditionalInfoMode('view');
+      }
+    } catch { alert('Failed to generate. Please try again.'); }
+    finally { setIsGeneratingAdditionalInfo(false); }
+  }
+
   async function generatePaidBuilderCV() {
     if (getUsageCount('builder') >= 3) { 
       alert('You have used all 3 CV outputs for this payment session.');
@@ -1074,12 +1567,12 @@ function BuilderWizard() {
           `Phone: ${builder.phone}`,
           `Email: ${builder.email}`,
           `LinkedIn: ${builder.linkedin}`,
-          `Degree: ${builder.degree} | University: ${builder.university} | Year: ${builder.graduationYear} | Country: ${builder.educationCountry}`,
+          `Education:\n${formatEducation()}`,
           `Soft Skills: ${builder.softSkills}`,
           `Technical Skills: ${builder.technicalSkills}`,
-          `Internships: ${builder.internships}`,
-          `Courses / Training: ${builder.courses}`,
-          `Languages: ${builder.languages}`,
+          `Internships: ${formatInternships()}`,
+          `Courses / Training: ${formatCourses()}`,
+          `Languages: ${formatLanguages()}`,
           `Licenses: ${builder.licenses}`,
           `Additional Information: ${builder.additionalInfo}`,
           `Experience:\n${formatExperience()}`,
@@ -1105,13 +1598,13 @@ function BuilderWizard() {
         linkedin: p.linkedin || builder.linkedin || 'Not provided',
         summary: p.summary || `Motivated ${builder.targetJob} professional.`,
         experience: p.experience || formatExperience(),
-        education: p.education || `${builder.degree} - ${builder.university} (${builder.graduationYear})`,
+        education: p.education || formatEducation(),
         softSkills: p.softSkills || builder.softSkills,
         technicalSkills: p.technicalSkills || builder.technicalSkills,
-        internships: p.internships || builder.internships || '',
-        courses: p.courses || builder.courses || '',
+        internships: p.internships || formatInternships() || '',
+        courses: p.courses || formatCourses() || '',
         additionalInfo: p.additionalInfo || '',
-        language: p.language || builder.languages || 'Not provided',
+        language: p.language || formatLanguages() || 'Not provided',
         license: p.license || builder.licenses || 'Not provided',
       };
       setBuiltCV(cv);
@@ -1144,12 +1637,21 @@ function BuilderWizard() {
         <input placeholder="Email" value={builder.email} onChange={e=>updateBuilder('email',e.target.value)}/>
         <input placeholder="LinkedIn" value={builder.linkedin} onChange={e=>updateBuilder('linkedin',e.target.value)}/>
       </div></div>}
-      {step===3&&<div className="wizard-card"><h3>Education</h3><div className="form">
-        <input placeholder="Degree" value={builder.degree} onChange={e=>updateBuilder('degree',e.target.value)}/>
-        <input placeholder="University" value={builder.university} onChange={e=>updateBuilder('university',e.target.value)}/>
-        <input placeholder="Graduation Year" value={builder.graduationYear} onChange={e=>updateBuilder('graduationYear',e.target.value)}/>
-        <input placeholder="Country" value={builder.educationCountry} onChange={e=>updateBuilder('educationCountry',e.target.value)}/>
-      </div></div>}
+      {step===3&&<div className="wizard-card"><h3>Education</h3>
+        {builder.educations.map((edu,index)=>(
+          <div className="experience-card" key={index}>
+            <h4>Education {index+1}</h4>
+            <div className="form">
+              <input placeholder="Degree" value={edu.degree} onChange={e=>updateEducation(index,'degree',e.target.value)}/>
+              <input placeholder="University" value={edu.university} onChange={e=>updateEducation(index,'university',e.target.value)}/>
+              <input placeholder="Graduation Year" value={edu.graduationYear} onChange={e=>updateEducation(index,'graduationYear',e.target.value)}/>
+              <input placeholder="Country" value={edu.educationCountry} onChange={e=>updateEducation(index,'educationCountry',e.target.value)}/>
+            </div>
+            {builder.educations.length>1&&<button className="danger-btn" onClick={()=>removeEducation(index)}>Remove Education</button>}
+          </div>
+        ))}
+        <button className="secondary" onClick={addEducation}>+ Add Another Education</button>
+      </div>}
       {step===4&&<div className="wizard-card"><h3>Professional Experience</h3>
         {builder.experiences.map((exp,index)=>(
           <div className="experience-card" key={index}>
@@ -1160,8 +1662,10 @@ function BuilderWizard() {
               <input placeholder="Location" value={exp.location} onChange={e=>updateExperience(index,'location',e.target.value)}/>
               <input placeholder="Start Date" value={exp.startDate} onChange={e=>updateExperience(index,'startDate',e.target.value)}/>
               <input placeholder="End Date / Present" value={exp.endDate} onChange={e=>updateExperience(index,'endDate',e.target.value)}/>
-              <textarea placeholder="Responsibilities - one per line" value={exp.responsibilities} onChange={e=>updateExperience(index,'responsibilities',e.target.value)}/>
-              <textarea placeholder="Achievements - one per line" value={exp.achievements} onChange={e=>updateExperience(index,'achievements',e.target.value)}/>
+              <label style={{display:'block',fontSize:12,fontWeight:700,color:'#64748b',marginTop:6,marginBottom:4}}>Responsibilities (write each next to its number)</label>
+              <textarea style={{minHeight:110}} value={exp.responsibilities} onChange={e=>updateExperience(index,'responsibilities',e.target.value)}/>
+              <label style={{display:'block',fontSize:12,fontWeight:700,color:'#64748b',marginTop:6,marginBottom:4}}>Achievements (optional)</label>
+              <textarea style={{minHeight:80}} value={exp.achievements} onChange={e=>updateExperience(index,'achievements',e.target.value)}/>
             </div>
             {builder.experiences.length>1&&<button className="danger-btn" onClick={()=>removeExperience(index)}>Remove Experience</button>}
           </div>
@@ -1169,17 +1673,82 @@ function BuilderWizard() {
         <button className="secondary" onClick={addExperience}>+ Add Another Experience</button>
       </div>}
       {step===5&&<div className="wizard-card"><h3>Skills</h3>
-        <textarea placeholder="Soft Skills" value={builder.softSkills} onChange={e=>updateBuilder('softSkills',e.target.value)}/>
-        <textarea placeholder="Technical Skills" value={builder.technicalSkills} onChange={e=>updateBuilder('technicalSkills',e.target.value)}/>
+        <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>Write each skill next to its number. They will appear separated by | in your CV.</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div>
+            <label style={{display:'block',fontSize:12,fontWeight:700,color:'#64748b',marginBottom:4}}>Soft Skills</label>
+            <textarea style={{minHeight:130}} value={builder.softSkills} onChange={e=>updateBuilder('softSkills',e.target.value)}/>
+          </div>
+          <div>
+            <label style={{display:'block',fontSize:12,fontWeight:700,color:'#64748b',marginBottom:4}}>Technical Skills</label>
+            <textarea style={{minHeight:130}} value={builder.technicalSkills} onChange={e=>updateBuilder('technicalSkills',e.target.value)}/>
+          </div>
+        </div>
       </div>}
-      {step===6&&<div className="wizard-card"><h3>Internship and Courses</h3>
-        <textarea placeholder="Internships" value={builder.internships} onChange={e=>updateBuilder('internships',e.target.value)}/>
-        <textarea placeholder="Courses / Training" value={builder.courses} onChange={e=>updateBuilder('courses',e.target.value)}/>
+      {step===6&&<div className="wizard-card">
+        <h3>Internships & Training</h3>
+        {builder.internships.map((item,index)=>(
+          <div className="experience-card" key={index}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <h4 style={{margin:0}}>Training {index+1}</h4>
+              {builder.internships.length>1&&<button className="danger-btn" onClick={()=>removeInternship(index)}>Remove</button>}
+            </div>
+            <div className="form">
+              <input placeholder="Training / Internship Name" value={item.name} onChange={e=>updateInternship(index,'name',e.target.value)}/>
+              <input placeholder="Company / Organization" value={item.company} onChange={e=>updateInternship(index,'company',e.target.value)}/>
+              <input placeholder="Date (e.g. June 2023)" value={item.date} onChange={e=>updateInternship(index,'date',e.target.value)}/>
+            </div>
+            <label style={{display:'block',fontSize:12,color:'#64748b',fontWeight:700,margin:'8px 0 4px'}}>What did you learn? (write each item next to its number)</label>
+            <textarea style={{minHeight:90}} value={item.learned} onChange={e=>updateInternship(index,'learned',e.target.value)}/>
+          </div>
+        ))}
+        <button className="secondary" onClick={addInternship}>+ Add Another Training</button>
+        <h3 style={{marginTop:24}}>Courses</h3>
+        {builder.courses.map((item,index)=>(
+          <div className="experience-card" key={index}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <h4 style={{margin:0}}>Course {index+1}</h4>
+              {builder.courses.length>1&&<button className="danger-btn" onClick={()=>removeCourse(index)}>Remove</button>}
+            </div>
+            <div className="form">
+              <input placeholder="Course Name" value={item.name} onChange={e=>updateCourse(index,'name',e.target.value)}/>
+              <input placeholder="Provider / Institution" value={item.company} onChange={e=>updateCourse(index,'company',e.target.value)}/>
+              <input placeholder="Date (e.g. March 2022)" value={item.date} onChange={e=>updateCourse(index,'date',e.target.value)}/>
+            </div>
+            <label style={{display:'block',fontSize:12,color:'#64748b',fontWeight:700,margin:'8px 0 4px'}}>What did you learn? (write each item next to its number)</label>
+            <textarea style={{minHeight:90}} value={item.learned} onChange={e=>updateCourse(index,'learned',e.target.value)}/>
+          </div>
+        ))}
+        <button className="secondary" onClick={addCourse}>+ Add Another Course</button>
       </div>}
       {step===7&&<div className="wizard-card"><h3>Languages, Licenses and Additional Info</h3>
-        <textarea placeholder="Languages" value={builder.languages} onChange={e=>updateBuilder('languages',e.target.value)}/>
-        <textarea placeholder="Licenses" value={builder.licenses} onChange={e=>updateBuilder('licenses',e.target.value)}/>
-        <textarea placeholder="Additional Information — e.g. UAE driving license, volunteer work, publications, hobbies. Leave blank and our AI will write a concise summary for you." value={builder.additionalInfo} onChange={e=>updateBuilder('additionalInfo',e.target.value)}/>
+        <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>Languages will appear as: Arabic (Native) | English (Excellent)</p>
+        {builder.languages.map((lang,index)=>(
+          <div key={index} style={{border:'1px solid #E5E0D6',borderRadius:10,padding:12,marginBottom:10,background:'#FAFAF8'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <span style={{fontWeight:700,fontSize:13,color:'#1C1A16'}}>Language {index+1}</span>
+              {builder.languages.length>1&&<button className="danger-btn" style={{padding:'2px 10px',fontSize:12}} onClick={()=>removeLanguage(index)}>Remove</button>}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <input placeholder="Language (e.g. Arabic)" value={lang.name} onChange={e=>updateLanguage(index,'name',e.target.value)}/>
+              <select value={lang.level} onChange={e=>updateLanguage(index,'level',e.target.value)} style={{padding:'8px 10px',border:'1px solid #E5E0D6',borderRadius:8,fontSize:13,background:'#fff',color:'#1C1A16'}}>
+                <option value="">Select level...</option>
+                <option value="Native">Native</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Very Good">Very Good</option>
+                <option value="Good">Good</option>
+                <option value="Intermediate">Intermediate</option>
+              </select>
+            </div>
+          </div>
+        ))}
+        <button className="secondary" style={{marginBottom:16}} onClick={addLanguage}>+ Add Language</button>
+        <textarea placeholder="Licenses & Certifications" value={builder.licenses} onChange={e=>updateBuilder('licenses',e.target.value)}/>
+        <div style={{marginTop:8}}>
+          <p style={{fontWeight:600,fontSize:13,marginBottom:6,color:'#1C1A16'}}>Additional Information</p>
+          <textarea placeholder="e.g. UAE driving license, volunteer work, publications, hobbies..." value={builder.additionalInfo} onChange={e=>updateBuilder('additionalInfo',e.target.value)} style={{marginBottom:4}}/>
+          <p style={{fontSize:11,color:'#94a3b8',margin:0}}>After generating your CV, you can use AI to polish this text.</p>
+        </div>
       </div>}
 
       <div className="wizard-actions">
@@ -1196,14 +1765,24 @@ function BuilderWizard() {
               <p className="success">Payment confirmed. Remaining outputs: {remainingOutputs}</p>
             </>
           ) : (
-            <UnlockButton
+            <PayPalWrapper
               service="builder"
               label={`Unlock Resume Package — ${PRICES.builder}`}
-              onBeforeRedirect={() => {
-                sessionStorage.setItem(
-                  'resuvanta_pending_builder',
-                  JSON.stringify({ builder })
-                );
+              onBeforePayment={() => {
+                sessionStorage.setItem('resuvanta_pending_builder', JSON.stringify({ builder }));
+              }}
+              onSuccess={() => {
+                const saved = sessionStorage.getItem('resuvanta_pending_builder');
+                if (saved) {
+                  try {
+                    const data = JSON.parse(saved);
+                    if (data.builder) setBuilder(data.builder);
+                    const used = getUsageCount('builder');
+                    setPaymentConfirmed(true);
+                    setRemainingOutputs(Math.max(0, 3 - used));
+                    setStep(totalSteps);
+                  } catch {}
+                } else { setPaymentConfirmed(true); }
               }}
             />
           )}
@@ -1271,6 +1850,19 @@ function BuilderWizard() {
           )}
 
           <CVTemplatePreview cv={builtCV}/>
+          <div style={{marginTop:16,padding:16,background:'#F8F6F1',borderRadius:12,border:'1px solid #E5E0D6',marginBottom:8}}>
+            <p style={{fontWeight:700,fontSize:13,marginBottom:6,color:'#1C1A16'}}>Additional Information</p>
+            <textarea value={builtCV.additionalInfo||''} onChange={e=>setBuiltCV({...builtCV,additionalInfo:e.target.value})} style={{minHeight:80,marginBottom:8}}/>
+            <button className="secondary" style={{fontSize:13,padding:'6px 14px'}} disabled={isGeneratingAdditionalInfo} onClick={async()=>{
+              if (!builtCV.additionalInfo?.trim()) return;
+              setIsGeneratingAdditionalInfo(true);
+              try {
+                const res = await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service:'additionalInfoOnly',builderData:`Improve the following text to sound more professional. Keep all facts exactly the same, only improve the language and tone:\n\n${builtCV.additionalInfo}`})});
+                const d = await res.json();
+                if (d.parsed?.additionalInfo) setBuiltCV(old=>({...old,additionalInfo:d.parsed.additionalInfo}));
+              } catch{} finally{setIsGeneratingAdditionalInfo(false);}
+            }}>{isGeneratingAdditionalInfo?'Polishing...':'Polish with AI'}</button>
+          </div>
 
           {showPdfWarning && (
             <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -1290,7 +1882,7 @@ function BuilderWizard() {
 
           <button onClick={async ()=>{
             const doDownload = async () => {
-              await openPDFWindow(builtCV,'Built CV');
+              await openPDFWindow(builtCV, 'Built CV', builder.experiences, builder.educations);
               clearServiceSession('builder');
               setPaymentConfirmed(false); setRemainingOutputs(3); setBuiltCV(null);
             };
@@ -1488,17 +2080,25 @@ function LinkedInPage() {
               {isGeneratingLinkedIn ? '⏳ optimizing your profile...' : 'Generate Full LinkedIn Optimization'}
             </button>
           ) : (
-            <UnlockButton
+            <PayPalWrapper
               service="linkedin"
               label={`Optimize My LinkedIn — ${PRICES.linkedin}`}
-              onBeforeRedirect={() => {
+              onBeforePayment={() => {
                 if (!targetRole.trim() || !cvText) {
                   throw new Error('Please enter your target role and upload your CV first.');
                 }
-                sessionStorage.setItem(
-                  'resuvanta_pending_linkedin',
-                  JSON.stringify({ targetRole, cvText })
-                );
+                sessionStorage.setItem('resuvanta_pending_linkedin', JSON.stringify({ targetRole, cvText }));
+              }}
+              onSuccess={() => {
+                const saved = sessionStorage.getItem('resuvanta_pending_linkedin');
+                if (saved) {
+                  try {
+                    const data = JSON.parse(saved);
+                    if (data.targetRole) setTargetRole(data.targetRole);
+                    if (data.cvText) setCvText(data.cvText);
+                    setPaymentConfirmed(true);
+                  } catch {}
+                } else { setPaymentConfirmed(true); }
               }}
             />
           )}
@@ -1667,7 +2267,7 @@ useEffect(()=>{
           <button onClick={()=>{setPage('optimization');setMenuOpen(false);}}>CV Optimization</button>
           <button onClick={()=>{setPage('builder');setMenuOpen(false);}}>CV Builder</button>
           <button onClick={()=>{setPage('linkedin');setMenuOpen(false);}}>LinkedIn</button>
-          <button onClick={()=>{setPage('pricing');setMenuOpen(false);}}>Our Services</button>
+          <a href="/pricing" style={{color:'inherit',textDecoration:'none'}} onClick={()=>setMenuOpen(false)}>Pricing</a>
           <button onClick={()=>{setPage('faq');setMenuOpen(false);}}>FAQ</button>
         </nav>
         <div className="headerActions">
@@ -1682,6 +2282,11 @@ useEffect(()=>{
       {renderPage()}
       <footer>
         <p>ResuVanta provides automated CV optimization support only. It does not guarantee interviews, job offers, or hiring decisions.</p>
+        <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+          <a href="/terms" style={{color:'#aaa',fontSize:13,textDecoration:'none'}}>Terms of Service</a>
+          <a href="/privacy" style={{color:'#aaa',fontSize:13,textDecoration:'none'}}>Privacy Policy</a>
+          <a href="/refund" style={{color:'#aaa',fontSize:13,textDecoration:'none'}}>Refund Policy</a>
+        </div>
       </footer>
     </div>
   );
