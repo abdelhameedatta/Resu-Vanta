@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     canonical: 'https://www.resuvanta.com',
   },
   verification: {
-    google: 'google3ece49493a8acc48',
+    google: 'ARcGreaDnXKVf1mHDStp4ajZjkNMGpnAYTjBjRjxfhQ',
   },
 }
 
