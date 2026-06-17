@@ -6,7 +6,7 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ResuVanta',
+  title: 'ResuVanta — ATS CV Optimization & Resume Builder',
   description: 'Optimize your CV, match job descriptions, build ATS-friendly resumes, and improve your LinkedIn profile. Get hired faster with ResuVanta.',
   keywords: 'CV optimization, resume builder, ATS resume, LinkedIn optimization, job application, CV builder, resume optimization, ATS friendly CV',
   authors: [{ name: 'ResuVanta' }],
@@ -18,16 +18,16 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://www.resuvanta.com',
     siteName: 'ResuVanta',
-    title: 'ResuVanta',
+    title: 'ResuVanta — ATS CV Optimization & Resume Builder',
     description: 'Optimize your CV, match job descriptions, build ATS-friendly resumes, and improve your LinkedIn profile.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ResuVanta',
+    title: 'ResuVanta — ATS CV Optimization & Resume Builder',
     description: 'Optimize your CV and get hired faster.',
   },
   alternates: {
-    canonical: 'https://www.resuvanta.com',   
+    canonical: 'https://www.resuvanta.com',
   },
 }
 
