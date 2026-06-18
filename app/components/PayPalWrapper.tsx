@@ -10,12 +10,6 @@ const FULL_PRICES: Record<string, number> = {
 };
 
 const DISCOUNT_EXPIRY = new Date('2026-07-19T23:59:59Z');
-const DISCOUNT_RATE = 0.30;
-
-function getDiscountedPrice(service: string): number {
-  const full = FULL_PRICES[service];
-  return Math.round(full * (1 - DISCOUNT_RATE) * 100) / 100;
-}
 
 interface PayPalWrapperProps {
   service: 'optimization' | 'builder' | 'linkedin';
@@ -35,8 +29,9 @@ export default function PayPalWrapper({ service, onSuccess, onBeforePayment }: P
     setOfferActive(new Date() < DISCOUNT_EXPIRY);
   }, []);
 
-  const fullPrice = FULL_PRICES[service];
-  const discountedPrice = getDiscountedPrice(service);
+  const full = FULL_PRICES[service];
+  const discounted = Math.round(full * 0.7 * 100) / 100;
+  const finalPrice = offerActive ? discounted : full;
 
   return (
     <PayPalScriptProvider options={{ clientId, currency: 'USD' }}>
@@ -45,10 +40,10 @@ export default function PayPalWrapper({ service, onSuccess, onBeforePayment }: P
         {offerActive && (
           <div style={{ textAlign: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: 13, color: '#888', textDecoration: 'line-through', marginRight: 8 }}>
-              ${fullPrice.toFixed(2)}
+              ${full.toFixed(2)}
             </span>
             <span style={{ fontSize: 16, fontWeight: 700, color: '#2DB34A' }}>
-              ${discountedPrice.toFixed(2)}
+              ${discounted.toFixed(2)}
             </span>
             <span style={{ fontSize: 11, color: '#e53e3e', fontWeight: 600, marginLeft: 8, background: '#fff5f5', padding: '2px 7px', borderRadius: 6 }}>
               30% OFF
@@ -63,34 +58,24 @@ export default function PayPalWrapper({ service, onSuccess, onBeforePayment }: P
         <PayPalButtons
           style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 45 }}
           disabled={loading}
-          createOrder={async () => {
+          createOrder={(_, actions) => {
             setError('');
             if (onBeforePayment) {
               try { onBeforePayment(); } catch (err: any) {
                 setError(err.message || 'Please fill in all required fields.');
-                throw err;
+                return Promise.reject(err);
               }
             }
-            const res = await fetch('/api/paypal/create-order', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ service }),
-            });
-            const data = await res.json();
-            if (!res.ok || !data.orderId) throw new Error(data.error || 'Failed to create order');
-            return data.orderId;
+            return actions.order.create({
+              purchase_units: [{ amount: { currency_code: 'USD', value: finalPrice.toFixed(2) } }],
+            } as any);
           }}
-          onApprove={async (data, actions) => {
+          onApprove={async (_, actions) => {
             setLoading(true);
             setError('');
             try {
-              const res = await fetch('/api/paypal/capture-order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: data.orderID }),
-              });
-              const result = await res.json();
-              if (result.success) {
+              const order = await actions.order!.capture();
+              if (order.status === 'COMPLETED') {
                 sessionStorage.setItem('resuvanta_payment_success', service);
                 onSuccess();
               } else {
