@@ -1050,7 +1050,7 @@ function OptimizationPage() {
 
   return (
     <section className="section">
-      <h2>CV Optimization — {PRICES.optimization}</h2>
+      <h2>CV Optimization — <DiscountPrice service="optimization"/></h2>
       <p className="muted">Upload your current CV, paste a job description, and get a free preview before unlocking full optimization.</p>
       <StepsStrip steps={['Upload your CV','Paste job description','Get free preview','Pay & get full optimized CV']} />
       <div className="grid">
@@ -1150,7 +1150,7 @@ function OptimizationPage() {
 
           {/* ── LOCKED CARD ── */}
           <div className="locked-card">
-            <h3>Unlock Full CV Optimization — {PRICES.optimization}</h3>
+            <h3>Unlock Full CV Optimization — <DiscountPrice service="optimization"/></h3>
             <p>Get the complete ATS keyword report, rewritten summary with professional sentences, improved experience section, skills optimization, and a downloadable PDF CV.</p>
             {paymentConfirmed ? (
               <div>
@@ -1916,11 +1916,11 @@ function BuilderWizard() {
 function BuilderPage() {
   return (
     <section className="section">
-      <h2>CV Builder + Optimization — {PRICES.builder}</h2>
+      <h2>CV Builder + Optimization — <DiscountPrice service="builder"/></h2>
       <p className="muted">No CV yet? Answer simple questions, add your target job, and generate an optimized ATS-friendly CV.</p>
       <StepsStrip steps={['Enter target job','Fill personal info','Add education & experience','Pay & generate CV']}/>
       <div className="builder-price-box">
-        <h3>CV Builder + Optimization — {PRICES.builder}</h3>
+        <h3>CV Builder + Optimization — <DiscountPrice service="builder"/></h3>
         <p>Build a complete CV from scratch and optimize it for your target job in one package. Final output: PDF only.</p>
       </div>
       <BuilderWizard/>
@@ -2039,7 +2039,7 @@ function LinkedInPage() {
 
   return (
     <section className="section">
-      <h2>LinkedIn Optimization — {PRICES.linkedin}</h2>
+      <h2>LinkedIn Optimization — <DiscountPrice service="linkedin"/></h2>
       <p className="muted">Free preview gives one headline only. Full LinkedIn optimization unlocks About section, experience rewrite, skills, and recruiter keywords based on your uploaded CV.</p>
 
       <StepsStrip steps={['Enter target role', 'Upload Your CV', 'Get free headline', 'Pay & unlock full profile']}/>
@@ -2091,7 +2091,7 @@ function LinkedInPage() {
 
         {/* ── LINKEDIN LOCKED CARD ── */}
         <div className="locked-card">
-          <h3>Unlock LinkedIn Optimization — {PRICES.linkedin}</h3>
+          <h3>Unlock LinkedIn Optimization — <DiscountPrice service="linkedin"/></h3>
           <p>Get your professional headline, About section, experience wording, skills list, and recruiter search keywords.</p>
           {paymentConfirmed ? (
             <button onClick={generateFullLinkedInOptimization} disabled={isGeneratingLinkedIn}>
