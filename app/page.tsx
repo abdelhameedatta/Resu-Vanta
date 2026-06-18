@@ -11,6 +11,24 @@ const PRICES = {
   linkedin: '$6.99',
 };
 
+const FULL_PRICES = { optimization: 7.99, builder: 11.99, linkedin: 6.99 };
+const DISCOUNT_EXPIRY = new Date('2026-07-19T23:59:59Z');
+
+function DiscountPrice({ service }: { service: 'optimization' | 'builder' | 'linkedin' }) {
+  const [offerActive, setOfferActive] = useState(false);
+  useEffect(() => { setOfferActive(new Date() < DISCOUNT_EXPIRY); }, []);
+  const full = FULL_PRICES[service];
+  const discounted = Math.round(full * 0.7 * 100) / 100;
+  if (!offerActive) return <span>${full.toFixed(2)}</span>;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span style={{ textDecoration: 'line-through', color: '#aaa', fontSize: '0.85em' }}>${full.toFixed(2)}</span>
+      <span style={{ color: '#2DB34A', fontWeight: 700 }}>${discounted.toFixed(2)}</span>
+      <span style={{ background: '#e53e3e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>30% OFF</span>
+    </span>
+  );
+}
+
 // ─── AI Call ─────────────────────────────────────────────────────────────────
 async function callAI(payload) {
   const res = await fetch('/api/ai', {
@@ -862,7 +880,7 @@ function Home({ setPage }) {
             <div className="rv-card-top rv-card-top-green" />
             <div className="rv-card-num">01</div>
             <div className="rv-card-title">CV Optimization</div>
-            <div className="rv-card-price">{PRICES.optimization}</div>
+            <div className="rv-card-price"><DiscountPrice service="optimization"/></div>
             <div className="rv-card-desc">Upload your CV and get a full breakdown — what works, what's missing, and exactly how to fix it.</div>
             <button className="rv-card-btn" onClick={() => setPage('optimization')}>Unlock access →</button>
           </div>
@@ -870,7 +888,7 @@ function Home({ setPage }) {
             <div className="rv-card-top" />
             <div className="rv-card-num">02</div>
             <div className="rv-card-title">CV Builder</div>
-            <div className="rv-card-price">{PRICES.builder}</div>
+            <div className="rv-card-price"><DiscountPrice service="builder"/></div>
             <div className="rv-card-desc">Start from zero and finish with a clean, recruiter-ready document in minutes.</div>
             <button className="rv-card-btn" onClick={() => setPage('builder')}>Unlock access →</button>
           </div>
@@ -878,7 +896,7 @@ function Home({ setPage }) {
             <div className="rv-card-top" />
             <div className="rv-card-num">03</div>
             <div className="rv-card-title">LinkedIn</div>
-            <div className="rv-card-price">{PRICES.linkedin}</div>
+            <div className="rv-card-price"><DiscountPrice service="linkedin"/></div>
             <div className="rv-card-desc">Fine-tune your headline, summary, and keywords so the right people find you first.</div>
             <button className="rv-card-btn" onClick={() => setPage('linkedin')}>Unlock access →</button>
           </div>
@@ -2182,17 +2200,17 @@ function PricingPage() {
       <h2>Our Services</h2>
       <div className="pricing-grid">
         <div className="price-card">
-          <h3>CV Optimization</h3><h2>{PRICES.optimization}</h2>
+          <h3>CV Optimization</h3><h2><DiscountPrice service="optimization"/></h2>
           <p>Improve your existing CV with job-focused recommendations, stronger wording, better structure, and ATS-friendly keyword guidance.</p>
           <ul><li>Free resume preview</li><li>ATS keyword analysis</li><li>Content and wording improvements</li><li>Role-focused optimization tips</li><li>Clear strengths and weaknesses report</li></ul>
         </div>
         <div className="price-card featured">
-          <h3>CV Builder + Optimization</h3><h2>{PRICES.builder}</h2>
+          <h3>CV Builder + Optimization</h3><h2><DiscountPrice service="builder"/></h2>
           <p>Create a professional CV from scratch with guided sections, optimized wording, and a structure designed for job applications.</p>
           <ul><li>Step-by-step CV builder</li><li>Professional CV structure</li><li>ATS-friendly wording</li><li>Skills and experience improvement</li><li>Complete resume package guidance</li></ul>
         </div>
         <div className="price-card">
-          <h3>LinkedIn Optimization</h3><h2>{PRICES.linkedin}</h2>
+          <h3>LinkedIn Optimization</h3><h2><DiscountPrice service="linkedin"/></h2>
           <p>Improve your LinkedIn profile so recruiters can understand your value faster and find you through better keywords.</p>
           <ul><li>Professional headline improvement</li><li>About section rewrite guidance</li><li>Skills keyword suggestions</li><li>Recruiter search optimization</li><li>Profile visibility improvement tips</li></ul>
         </div>
