@@ -1,5 +1,9 @@
-import { redirect } from 'next/navigation';
+'use client';
+import { useEffect } from 'react';
 
 export default function ResumeBuilderPage() {
-  redirect('/?page=builder');
+  useEffect(() => {
+    window.location.replace('/?page=builder');
+  }, []);
+  return null;
 }

@@ -1,5 +1,9 @@
-import { redirect } from 'next/navigation';
+'use client';
+import { useEffect } from 'react';
 
 export default function CvOptimizationPage() {
-  redirect('/?page=optimization');
+  useEffect(() => {
+    window.location.replace('/?page=optimization');
+  }, []);
+  return null;
 }
