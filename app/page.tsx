@@ -2260,7 +2260,9 @@ useEffect(()=>{
       setPage(service);
     }
     if (payment || service || selectedPage) {
-      window.history.replaceState({}, '', '/');
+      const pathMap: Record<string, string> = { optimization: '/cv-optimization', builder: '/resume-builder', linkedin: '/linkedin' };
+      const newPath = pathMap[selectedPage] || pathMap[service] || '/';
+      window.history.replaceState({}, '', newPath);
     }
   },[]);;
 
