@@ -2264,7 +2264,12 @@ useEffect(()=>{
       const newPath = pathMap[selectedPage] || pathMap[service] || '/';
       window.history.replaceState({}, '', newPath);
     }
-  },[]);;
+  },[]);
+
+  useEffect(() => {
+    const pathMap: Record<string, string> = { optimization: '/cv-optimization', builder: '/resume-builder', linkedin: '/linkedin', pricing: '/pricing', faq: '/faq', home: '/' };
+    window.history.replaceState({}, '', pathMap[page] || '/');
+  }, [page]);
 
   function renderPage() {
     if (page==='home') return <Home setPage={setPage}/>;
